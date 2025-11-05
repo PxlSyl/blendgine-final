@@ -2,7 +2,6 @@ import React, { useMemo, useCallback } from 'react';
 
 import { useProjectSetup } from '@/components/store/projectSetup/hook';
 import { useRarity } from '@/components/store/rarityStore/hook';
-import { useFilters } from '@/components/store/filters/hook';
 
 import { useStore } from '@/components/store';
 import { useGenerateStore } from '@/components/store/generate';
@@ -17,7 +16,6 @@ const FooterActions = React.memo(() => {
   const activeSection = useStore((state) => state.activeSection);
   const showExtraButtons = useStore((state) => state.showExtraButtons);
   const { equalizeAllLayers, randomizeAllLayers, resetAll } = useRarity();
-  const { randomizePercentages, equalizePercentages, resetPercentages } = useFilters();
   const { saveRarityConfig } = useLayerOrder();
   const { exportFolder } = useProjectSetup();
 
@@ -40,13 +38,11 @@ const FooterActions = React.memo(() => {
       if (mainStore.step === 3) {
         void randomizeAllLayers();
         void saveRarityConfig();
-      } else if (mainStore.step === 5) {
-        randomizePercentages();
       }
     } catch (error) {
       console.error('Error randomizing all:', error);
     }
-  }, [randomizeAllLayers, randomizePercentages, saveRarityConfig]);
+  }, [randomizeAllLayers, saveRarityConfig]);
 
   const handleEqualizeAll = useCallback(() => {
     try {
@@ -55,13 +51,11 @@ const FooterActions = React.memo(() => {
       if (mainStore.step === 3) {
         void equalizeAllLayers();
         void saveRarityConfig();
-      } else if (mainStore.step === 5) {
-        equalizePercentages();
       }
     } catch (error) {
       console.error('Error equalizing all:', error);
     }
-  }, [equalizeAllLayers, equalizePercentages, saveRarityConfig]);
+  }, [equalizeAllLayers, saveRarityConfig]);
 
   const handleResetAll = useCallback(() => {
     try {
@@ -70,13 +64,11 @@ const FooterActions = React.memo(() => {
       if (mainStore.step === 3) {
         resetAll();
         void saveRarityConfig();
-      } else if (mainStore.step === 5) {
-        resetPercentages();
       }
     } catch (error) {
       console.error('Error resetting all:', error);
     }
-  }, [resetAll, resetPercentages, saveRarityConfig]);
+  }, [resetAll, saveRarityConfig]);
 
   const stepConfig = useMemo(() => {
     switch (step) {
@@ -86,7 +78,6 @@ const FooterActions = React.memo(() => {
           showGenerateButton: false,
           showExtraButtons: false,
           isGenerationStep: false,
-          isFilterStep: false,
           isLegendaryStep: false,
         };
       case 2:
@@ -95,7 +86,6 @@ const FooterActions = React.memo(() => {
           showGenerateButton: false,
           showExtraButtons: false,
           isGenerationStep: false,
-          isFilterStep: false,
           isLegendaryStep: false,
         };
       case 3:
@@ -104,7 +94,6 @@ const FooterActions = React.memo(() => {
           showGenerateButton: false,
           showExtraButtons,
           isGenerationStep: false,
-          isFilterStep: false,
           isLegendaryStep: false,
         };
       case 4:
@@ -113,25 +102,14 @@ const FooterActions = React.memo(() => {
           showGenerateButton: true,
           showExtraButtons: false,
           isGenerationStep: true,
-          isFilterStep: false,
           isLegendaryStep: false,
         };
       case 5:
-        return {
-          title: 'Effects Setup',
-          showGenerateButton: true,
-          showExtraButtons: true,
-          isGenerationStep: false,
-          isFilterStep: true,
-          isLegendaryStep: false,
-        };
-      case 6:
         return {
           title: 'Legendary NFT Mixer',
           showGenerateButton: true,
           showExtraButtons: false,
           isGenerationStep: false,
-          isFilterStep: false,
           isLegendaryStep: true,
         };
       default:
@@ -140,7 +118,6 @@ const FooterActions = React.memo(() => {
           showGenerateButton: false,
           showExtraButtons: false,
           isGenerationStep: false,
-          isFilterStep: false,
           isLegendaryStep: false,
         };
     }
@@ -156,23 +133,12 @@ const FooterActions = React.memo(() => {
           console.error('Error generating:', error);
         }
       },
-      handleApplyFilters: async (): Promise<void> => {
-        try {
-          const generateStore = useGenerateStore.getState();
-          await generateStore.handleApplyFilters();
-        } catch (error) {
-          console.error('Error applying filters:', error);
-        }
-      },
       onMixLegendaries: handleMixLegendaries,
     }),
     [handleMixLegendaries]
   );
 
-  const getButtonType = useCallback((): 'filter' | 'generation' | 'legendary' | undefined => {
-    if (stepConfig.isFilterStep) {
-      return 'filter';
-    }
+  const getButtonType = useCallback((): 'generation' | 'legendary' | undefined => {
     if (stepConfig.isGenerationStep) {
       return 'generation';
     }
@@ -180,7 +146,7 @@ const FooterActions = React.memo(() => {
       return 'legendary';
     }
     return undefined;
-  }, [stepConfig.isFilterStep, stepConfig.isGenerationStep, stepConfig.isLegendaryStep]);
+  }, [stepConfig.isGenerationStep, stepConfig.isLegendaryStep]);
 
   const isProcessing = useIsProcessing();
 

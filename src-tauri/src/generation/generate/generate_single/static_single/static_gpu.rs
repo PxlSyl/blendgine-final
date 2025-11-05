@@ -9,6 +9,7 @@ use dashmap::DashMap;
 use image::RgbaImage;
 use once_cell::sync::Lazy;
 
+use crate::effects::core::dispatch::blendmodes::BlendConverter;
 use crate::effects::core::{
     cpu::resize_cpu::{ResizeAlgorithm, ResizeConfig, ResizeFilter},
     gpu::{
@@ -20,7 +21,6 @@ use crate::effects::core::{
 };
 use crate::generation::generate::layers::blend::LayerBlendProperties;
 use crate::types::{NFTTrait, RarityConfig};
-
 static BLEND_PROPERTIES_CACHE: Lazy<DashMap<String, LayerBlendProperties>> =
     Lazy::new(|| DashMap::new());
 
@@ -28,21 +28,39 @@ static RESIZE_TEXTURES: Lazy<DashMap<(u32, u32), Arc<GpuTexture>>> = Lazy::new(|
 
 static STAGING_BUFFERS_CACHE: Lazy<DashMap<u64, Arc<wgpu::Buffer>>> = Lazy::new(|| DashMap::new());
 
-static SHARED_GPU_PIPELINE: Lazy<Arc<StaticGpuPipeline>> =
-    Lazy::new(|| Arc::new(StaticGpuPipeline::new().expect("Failed to create shared GPU pipeline")));
+static SHARED_GPU_PIPELINE: once_cell::sync::OnceCell<Arc<StaticGpuPipeline>> =
+    once_cell::sync::OnceCell::new();
+static SHARED_RESIZE_GPU: once_cell::sync::OnceCell<Arc<ResizeGpu>> =
+    once_cell::sync::OnceCell::new();
 
-static SHARED_RESIZE_GPU: Lazy<Arc<ResizeGpu>> = Lazy::new(|| {
-    Arc::new(
-        ResizeGpu::new(
-            shaders::get_global_device().expect("Global device not initialized"),
-            shaders::get_global_queue().expect("Global queue not initialized"),
-        )
-        .expect("Failed to create shared resize GPU"),
-    )
-});
+pub async fn get_or_init_shared_gpu_pipeline() -> Result<Arc<StaticGpuPipeline>, anyhow::Error> {
+    if let Some(pipeline) = SHARED_GPU_PIPELINE.get() {
+        return Ok(pipeline.clone());
+    }
+
+    let pipeline = Arc::new(StaticGpuPipeline::new().await?);
+    let _ = SHARED_GPU_PIPELINE.set(pipeline.clone());
+
+    // Initialize ResizeGpu as well
+    let device = shaders::get_global_device()
+        .ok_or_else(|| anyhow::anyhow!("Global device not initialized"))?;
+    let queue = shaders::get_global_queue()
+        .ok_or_else(|| anyhow::anyhow!("Global queue not initialized"))?;
+
+    let resize_gpu = Arc::new(
+        ResizeGpu::new(&device, &queue)
+            .map_err(|e| anyhow::anyhow!("Failed to create ResizeGpu: {}", e))?,
+    );
+    let _ = SHARED_RESIZE_GPU.set(resize_gpu);
+
+    Ok(pipeline)
+}
 
 pub fn get_shared_gpu_pipeline() -> Arc<StaticGpuPipeline> {
-    SHARED_GPU_PIPELINE.clone()
+    SHARED_GPU_PIPELINE
+        .get()
+        .expect("GPU pipeline not initialized. Call get_or_init_shared_gpu_pipeline first")
+        .clone()
 }
 
 pub fn reset_shared_gpu_pipeline() -> Result<(), Box<dyn std::error::Error>> {
@@ -68,7 +86,10 @@ pub fn reset_shared_gpu_pipeline() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 pub fn get_shared_resize_gpu() -> Arc<ResizeGpu> {
-    SHARED_RESIZE_GPU.clone()
+    SHARED_RESIZE_GPU
+        .get()
+        .expect("Resize GPU not initialized")
+        .clone()
 }
 
 fn clear_thread_local_caches() {
@@ -102,14 +123,16 @@ impl Drop for StaticGpuPipeline {
 }
 
 impl StaticGpuPipeline {
-    fn new() -> Result<Self, anyhow::Error> {
+    async fn new() -> Result<Self, anyhow::Error> {
         let gpu_manager = GpuEffectManager::new()
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to create GPU manager: {}", e))?;
 
-        shaders::initialize_global_device(gpu_manager.device(), gpu_manager.queue());
+        shaders::initialize_global_device(&gpu_manager.device, &gpu_manager.queue);
 
         let blend_processor = Arc::new(
             GpuBlendProcessor::new()
+                .await
                 .map_err(|e| anyhow::anyhow!("Failed to create GPU blend processor: {}", e))?,
         );
 
@@ -498,6 +521,12 @@ pub async fn process_static_single_gpu(
     index: u32,
     resize_config: Option<&ResizeConfig>,
 ) -> Result<()> {
+    // Initialize GPU pipeline first (must be done in async context)
+    let _ = get_or_init_shared_gpu_pipeline().await?;
+
+    // Initialize GPU blend context if using GPU
+    let _ = BlendConverter::initialize_global_gpu_context().await;
+
     let traits_owned = traits.to_vec();
     let active_layer_order_owned = active_layer_order.to_vec();
     let input_folder_owned = input_folder.to_path_buf();

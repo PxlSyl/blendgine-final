@@ -1,7 +1,7 @@
 use image::DynamicImage;
 use once_cell::sync::Lazy;
-use parking_lot::RwLock;
 use std::{error::Error, fmt, sync::Arc};
+use tokio::sync::RwLock;
 
 use crate::effects::core::{
     cpu::resize_cpu::{
@@ -41,18 +41,18 @@ pub struct ResizeConverter {
 }
 
 impl ResizeConverter {
-    pub fn new() -> Result<Self, ResizeError> {
-        Self::new_with_renderer_preference(None)
+    pub async fn new() -> Result<Self, ResizeError> {
+        Self::new_with_renderer_preference(None).await
     }
 
-    pub fn new_with_renderer_preference(
+    pub async fn new_with_renderer_preference(
         renderer_preference: Option<String>,
     ) -> Result<Self, ResizeError> {
         let preferred_renderer =
             renderer_preference.unwrap_or_else(|| get_current_renderer_preference());
 
         let gpu_manager = if preferred_renderer == "gpu" {
-            match Self::get_or_create_gpu_manager() {
+            match Self::get_or_create_gpu_manager().await {
                 Some(manager) => {
                     println!("GPU resize manager ready");
                     Some(manager)
@@ -88,51 +88,53 @@ impl ResizeConverter {
         })
     }
 
-    fn get_or_create_gpu_manager() -> Option<Arc<GpuEffectManager>> {
+    async fn get_or_create_gpu_manager() -> Option<Arc<GpuEffectManager>> {
         // 🎯 Optimisation: Lecture d'abord pour éviter l'écriture si possible
         {
-            let read_guard = GLOBAL_GPU_MANAGER.read();
+            let read_guard = GLOBAL_GPU_MANAGER.read().await;
             if let Some(ref manager) = *read_guard {
                 return Some(manager.clone());
             }
         } // read_guard est libéré ici
 
         // 🎯 Écriture seulement si nécessaire (création)
-        let mut global_manager = if let Some(manager) = GLOBAL_GPU_MANAGER.try_write() {
-            manager
+        let should_create = {
+            let global_manager = GLOBAL_GPU_MANAGER.write().await;
+
+            // 🎯 Double-check: vérifier à nouveau après avoir acquis l'écriture
+            if let Some(ref manager) = *global_manager {
+                return Some(manager.clone());
+            }
+
+            true
+        }; // Lock is dropped here before await
+
+        if should_create {
+            match GpuEffectManager::new().await {
+                Ok(manager) => {
+                    let arc_manager = Arc::new(manager);
+
+                    // Reacquire the lock to store the result
+                    let mut global_manager = GLOBAL_GPU_MANAGER.write().await;
+                    *global_manager = Some(arc_manager.clone());
+                    println!("GPU resize manager created and cached");
+
+                    Some(arc_manager)
+                }
+                Err(e) => {
+                    println!("Failed to create GPU resize manager: {}", e);
+                    None
+                }
+            }
         } else {
-            eprintln!(
-                "⚠️ [RESIZE] Failed to acquire write lock on global GPU manager, returning None"
-            );
-            return None;
-        };
-
-        // 🎯 Double-check: vérifier à nouveau après avoir acquis l'écriture
-        if let Some(ref manager) = *global_manager {
-            return Some(manager.clone());
-        }
-
-        match GpuEffectManager::new() {
-            Ok(manager) => {
-                let arc_manager = Arc::new(manager);
-                *global_manager = Some(arc_manager.clone());
-                println!("GPU resize manager created and cached");
-                Some(arc_manager)
-            }
-            Err(e) => {
-                println!("Failed to create GPU resize manager: {}", e);
-                None
-            }
+            None
         }
     }
 
-    pub fn clear_global_gpu_manager() {
-        if let Some(mut global_manager) = GLOBAL_GPU_MANAGER.try_write() {
-            *global_manager = None;
-            println!("Global GPU resize manager cleared");
-        } else {
-            eprintln!("⚠️ [RESIZE] Failed to acquire write lock on global GPU manager for cleanup");
-        }
+    pub async fn clear_global_gpu_manager() {
+        let mut global_manager = GLOBAL_GPU_MANAGER.write().await;
+        *global_manager = None;
+        println!("Global GPU resize manager cleared");
     }
 
     pub fn resize_single_image(
@@ -159,7 +161,10 @@ impl ResizeConverter {
             Ok(result) => Ok(result),
             Err(e) => {
                 println!("GPU resize failed, falling back to CPU: {}", e);
-                Self::clear_global_gpu_manager();
+                // Clear manager asynchronously in background
+                tokio::spawn(async {
+                    Self::clear_global_gpu_manager().await;
+                });
                 resize_single_image(image, width, height, resize_config).map_err(|e| {
                     Box::new(ResizeError::ImageCreation(e.to_string())) as Box<dyn Error>
                 })
@@ -195,7 +200,10 @@ impl ResizeConverter {
             Ok(result) => Ok(result),
             Err(e) => {
                 println!("GPU batch resize failed, falling back to CPU: {}", e);
-                Self::clear_global_gpu_manager();
+                // Clear manager asynchronously in background
+                tokio::spawn(async {
+                    Self::clear_global_gpu_manager().await;
+                });
                 resize_images(frames, width, height, resize_config).map_err(|e| {
                     Box::new(ResizeError::ImageCreation(e.to_string())) as Box<dyn Error>
                 })

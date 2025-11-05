@@ -16,22 +16,6 @@ pub fn get_secure_working_dir() -> Result<PathBuf> {
     Ok(app_data_dir)
 }
 
-pub fn create_secure_temp_dir(prefix: &str) -> Result<PathBuf> {
-    let base_dir = get_secure_working_dir()?;
-    let temp_dir = base_dir.join(format!(
-        "{}_{}",
-        prefix,
-        chrono::Utc::now().timestamp_millis()
-    ));
-
-    if !temp_dir.exists() {
-        tracing::debug!("[TempDir] Creating temp directory: {:?}", temp_dir);
-        fs::create_dir_all(&temp_dir)?;
-    }
-
-    Ok(temp_dir)
-}
-
 pub fn cleanup_old_temp_dirs() -> Result<()> {
     let base_dir = get_secure_working_dir()?;
     let cutoff_time = chrono::Utc::now() - chrono::Duration::hours(24);

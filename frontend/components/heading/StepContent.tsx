@@ -6,7 +6,6 @@ import ProjectSetup from '@/components/create/steps/ProjectSetup';
 import LayerOrder from '@/components/create/steps/LayerOrder';
 import RarityConfig from '@/components/create/steps/RarityConfig';
 import Generation from '@/components/create/steps/GenerationSettings';
-import TintAndFilterSetup from '@/components/create/steps/FiltersSetup';
 import LegendaryNFTMixer from '@/components/create/steps/mixLegendaries';
 import MetadataStepContent from '@/components/manage/heading/MetadataStepContent';
 
@@ -25,8 +24,6 @@ const StepContent: React.FC = () => {
       case 4:
         return <Generation />;
       case 5:
-        return <TintAndFilterSetup />;
-      case 6:
         return <LegendaryNFTMixer />;
       default:
         return null;

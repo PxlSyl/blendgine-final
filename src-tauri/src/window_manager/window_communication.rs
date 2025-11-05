@@ -1,12 +1,4 @@
-use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager, Runtime};
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EmitPayload {
-    pub window: String,
-    pub event: String,
-    pub payload: serde_json::Value,
-}
 
 #[tauri::command]
 pub async fn emit_to_window<R: Runtime>(

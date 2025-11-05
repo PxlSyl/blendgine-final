@@ -19,7 +19,7 @@ const AppHeader: React.FC = () => {
           By
         </div>
         <div className="text-xl font-bold font-title text-transparent bg-clip-text bg-gradient-to-r from-[rgb(var(--color-primary))] via-[rgb(var(--color-secondary))] to-[rgb(var(--color-accent))] mr-4 hidden sm:block">
-          PxlSylLab
+          GraffNode
         </div>
         <DarkModeToggle />
       </div>

@@ -41,9 +41,9 @@ impl Drop for GpuBlendContext {
 }
 
 impl GpuBlendContext {
-    pub fn new() -> Result<Self, Box<dyn Error>> {
-        let manager = GpuEffectManager::new()?;
-        let processor = Arc::new(GpuBlendProcessor::new()?);
+    pub async fn new() -> Result<Self, Box<dyn Error>> {
+        let manager = GpuEffectManager::new().await?;
+        let processor = Arc::new(GpuBlendProcessor::new().await?);
 
         Ok(Self { manager, processor })
     }
@@ -60,7 +60,7 @@ impl Drop for GpuBlendProcessor {
 }
 
 impl GpuBlendProcessor {
-    pub fn new() -> Result<Self, BlendGpuError> {
+    pub async fn new() -> Result<Self, BlendGpuError> {
         let bind_group_layout = shaders::get_or_create_bind_group_layout("blend_modes");
         Ok(Self { bind_group_layout })
     }

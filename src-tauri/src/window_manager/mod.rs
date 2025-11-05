@@ -7,4 +7,3 @@ pub mod show_dialog;
 pub mod theme_colors_window;
 pub mod window_communication;
 pub mod window_manager;
-pub mod zoom_effects_window;

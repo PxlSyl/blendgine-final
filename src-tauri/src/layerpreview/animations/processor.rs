@@ -66,15 +66,17 @@ fn extract_webp_frames(data: &[u8]) -> Result<Vec<DynamicImage>, String> {
     let decoder = Decoder::new(data).map_err(|e| format!("Decoder error: {:?}", e))?;
     let mut result = Vec::new();
 
+    let (width, height) = decoder.dimensions();
+
     for frame in decoder.into_iter() {
-        let frame_bytes = frame
+        let frame_rgba_bytes = frame
             .into_image()
-            .map_err(|_| "Failed to convert WebP frame to bytes".to_string())?;
+            .map_err(|_| "Failed to convert WebP frame to RGBA bytes".to_string())?;
 
-        let dynamic_image = image::load_from_memory(&frame_bytes)
-            .map_err(|e| format!("Failed to load frame from memory: {}", e))?;
+        let rgba_image = image::RgbaImage::from_raw(width, height, frame_rgba_bytes.to_vec())
+            .ok_or_else(|| "Failed to create RgbaImage from WebP frame data".to_string())?;
 
-        result.push(dynamic_image);
+        result.push(DynamicImage::ImageRgba8(rgba_image));
     }
     Ok(result)
 }

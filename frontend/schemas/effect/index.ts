@@ -24,8 +24,8 @@ export {
 // Export schémas auth
 export { UserSchema, AuthStateSchema, AppStateSchema, GenerationStateSchema } from './auth';
 
-// Export schémas filters
-export { FilterStoreStateSchema, FlipFlopStateSchema, TintingSliceStateSchema } from './filters';
+// Export schémas filters (conservés pour compatibilité types)
+// Les schémas FilterInstance, FilterOptions, etc. sont conservés car utilisés dans la génération
 
 // Export schémas de gaming
 export { DataGamingStateSchema, GameAttributeSchema, GameHeaderSchema } from './games';

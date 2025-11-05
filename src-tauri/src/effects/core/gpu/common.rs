@@ -16,7 +16,9 @@ fn get_or_create_staging_buffer(size: usize) -> Vec<u8> {
 
         for i in 0..buffers.len() {
             if buffers[i].len() >= size {
-                return buffers.swap_remove(i);
+                let mut buffer = buffers.swap_remove(i);
+                buffer.resize(size, 0);
+                return buffer;
             }
         }
 
@@ -198,16 +200,12 @@ impl GpuTexture {
 
         let mut final_data = get_or_create_staging_buffer(final_size);
 
-        if bytes_per_row % 256 == 0 {
-            final_data.copy_from_slice(&data[..final_size]);
-        } else {
-            for y in 0..size.height {
-                let src_start = (y * aligned_bytes_per_row) as usize;
-                let dst_start = (y * bytes_per_row) as usize;
-                let row_size = (size.width * 4) as usize;
-                final_data[dst_start..dst_start + row_size]
-                    .copy_from_slice(&data[src_start..src_start + row_size]);
-            }
+        for y in 0..size.height {
+            let src_start = (y * aligned_bytes_per_row) as usize;
+            let dst_start = (y * bytes_per_row) as usize;
+            let row_size = (size.width * 4) as usize;
+            final_data[dst_start..dst_start + row_size]
+                .copy_from_slice(&data[src_start..src_start + row_size]);
         }
 
         let image = ImageBuffer::<Rgba<u8>, _>::from_raw(size.width, size.height, final_data)

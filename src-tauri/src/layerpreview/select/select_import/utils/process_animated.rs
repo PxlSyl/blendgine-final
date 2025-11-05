@@ -14,9 +14,8 @@ use crate::{
 };
 
 use anyhow::Result;
-use std::{path::PathBuf, sync::atomic::Ordering};
+use std::{fs::read_dir, path::PathBuf, sync::atomic::Ordering};
 use tracing;
-
 pub async fn process_animated_layers(
     folder_path: &str,
     layers: &[LayerContent],
@@ -34,15 +33,18 @@ pub async fn process_animated_layers(
 
     reset_animation_state().await;
 
-    let animated_layers_count = layers
+    let mut animated_checks = Vec::new();
+    for layer in layers {
+        let layer_path = PathBuf::from(folder_path).join(&layer.name);
+        animated_checks.push(check_animated_images(
+            layer_path.to_string_lossy().to_string(),
+        ));
+    }
+
+    let animated_results = futures::future::join_all(animated_checks).await;
+    let animated_layers_count = animated_results
         .iter()
-        .filter(|layer| {
-            let layer_path = PathBuf::from(folder_path).join(&layer.name);
-            futures::executor::block_on(check_animated_images(
-                layer_path.to_string_lossy().to_string(),
-            ))
-            .unwrap_or(false)
-        })
+        .filter(|result| matches!(result, Ok(true)))
         .count();
 
     tracing::info!(
@@ -113,8 +115,6 @@ pub async fn process_animated_layers(
 }
 
 fn count_total_animated_files(folder_path: &str, layers: &[LayerContent]) -> u32 {
-    use std::fs::read_dir;
-
     let mut total_files = 0;
     tracing::debug!("Counting animated files in {} layers", layers.len());
 

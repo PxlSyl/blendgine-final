@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
 import { useProjectSetup } from '@/components/store/projectSetup/hook';
-import { useFilters } from '@/components/store/filters/hook';
 import { useLegendaryNFTStore } from '@/components/store/legendary';
 
 import StepWrapper from '@/components/heading/StepWrapper';
@@ -12,7 +11,6 @@ import { CheckTrueIcon, FolderIcon, AttentionIcon, InfoIcon } from '@/components
 
 const LegendaryNFTMixer: React.FC = () => {
   const { exportFolder: projectExportFolder } = useProjectSetup();
-  const { destinationFolder: filterDestinationFolder } = useFilters();
   const {
     legendaryFolder,
     exportFolder,
@@ -27,8 +25,8 @@ const LegendaryNFTMixer: React.FC = () => {
 
   useEffect(() => {
     setShowContent(true);
-    void initExportFolder(filterDestinationFolder, projectExportFolder);
-  }, [filterDestinationFolder, projectExportFolder, initExportFolder, setShowContent]);
+    void initExportFolder('', projectExportFolder);
+  }, [projectExportFolder, initExportFolder, setShowContent]);
 
   const transitionVariants = {
     hidden: { opacity: 0, y: 20 },

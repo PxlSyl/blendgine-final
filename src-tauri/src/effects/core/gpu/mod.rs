@@ -1,4 +1,3 @@
-use pollster::block_on;
 use std::error::Error;
 use std::sync::Arc;
 use wgpu::{Backends, Device, Instance, Queue, Texture};
@@ -42,8 +41,8 @@ impl<'a> GpuImage<'a> {
 }
 
 pub struct GpuEffectManager {
-    device: Arc<Device>,
-    queue: Arc<Queue>,
+    pub device: Arc<Device>,
+    pub queue: Arc<Queue>,
 }
 
 impl Drop for GpuEffectManager {
@@ -51,17 +50,20 @@ impl Drop for GpuEffectManager {
 }
 
 impl GpuEffectManager {
-    pub fn new() -> Result<Self, GpuError> {
+    pub async fn new() -> Result<Self, GpuError> {
         let instance = Instance::new(wgpu::InstanceDescriptor {
             backends: Backends::all(),
             dx12_shader_compiler: Default::default(),
         });
 
-        let adapter = match block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            force_fallback_adapter: false,
-            compatible_surface: None,
-        })) {
+        let adapter = match instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                force_fallback_adapter: false,
+                compatible_surface: None,
+            })
+            .await
+        {
             Some(adapter) => adapter,
             _none => {
                 return Err(GpuError::InitializationError(
@@ -70,14 +72,17 @@ impl GpuEffectManager {
             }
         };
 
-        let (device, queue) = match block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                label: Some("GPU Effect Device"),
-                features: wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
-                limits: wgpu::Limits::default(),
-            },
-            None,
-        )) {
+        let (device, queue) = match adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    label: Some("GPU Effect Device"),
+                    features: wgpu::Features::TEXTURE_ADAPTER_SPECIFIC_FORMAT_FEATURES,
+                    limits: wgpu::Limits::default(),
+                },
+                None,
+            )
+            .await
+        {
             Ok((device, queue)) => (device, queue),
             Err(e) => {
                 return Err(GpuError::DeviceError(format!(
@@ -89,6 +94,9 @@ impl GpuEffectManager {
 
         let device = Arc::new(device);
         let queue = Arc::new(queue);
+
+        // Initialize global device for shader cache
+        shaders::initialize_global_device(&device, &queue);
 
         let manager = Self { device, queue };
 

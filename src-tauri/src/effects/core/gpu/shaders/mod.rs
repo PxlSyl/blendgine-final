@@ -1,31 +1,30 @@
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
+use parking_lot::RwLock;
 use std::fs;
 use std::sync::Arc;
 use wgpu::{BindGroupLayout, ComputePipeline, Device, Queue};
 
-static mut GLOBAL_DEVICE: Option<*const Device> = None;
-static mut GLOBAL_QUEUE: Option<*const Queue> = None;
+static GLOBAL_DEVICE: Lazy<RwLock<Option<Arc<Device>>>> = Lazy::new(|| RwLock::new(None));
+static GLOBAL_QUEUE: Lazy<RwLock<Option<Arc<Queue>>>> = Lazy::new(|| RwLock::new(None));
 
 pub static SHADER_CACHE: Lazy<DashMap<String, Arc<ComputePipeline>>> = Lazy::new(|| DashMap::new());
 
 pub static BIND_GROUP_LAYOUT_CACHE: Lazy<DashMap<String, Arc<BindGroupLayout>>> =
     Lazy::new(|| DashMap::new());
 
-pub fn initialize_global_device(device: &Device, queue: &Queue) {
-    unsafe {
-        GLOBAL_DEVICE = Some(device as *const Device);
-        GLOBAL_QUEUE = Some(queue as *const Queue);
-        println!("🚀 [SHADER CACHE] Global device initialized");
-    }
+pub fn initialize_global_device(device: &Arc<Device>, queue: &Arc<Queue>) {
+    *GLOBAL_DEVICE.write() = Some(device.clone());
+    *GLOBAL_QUEUE.write() = Some(queue.clone());
+    println!("🚀 [SHADER CACHE] Global device initialized");
 }
 
-pub fn get_global_device() -> Option<&'static Device> {
-    unsafe { GLOBAL_DEVICE.map(|ptr| &*ptr) }
+pub fn get_global_device() -> Option<Arc<Device>> {
+    GLOBAL_DEVICE.read().clone()
 }
 
-pub fn get_global_queue() -> Option<&'static Queue> {
-    unsafe { GLOBAL_QUEUE.map(|ptr| &*ptr) }
+pub fn get_global_queue() -> Option<Arc<Queue>> {
+    GLOBAL_QUEUE.read().clone()
 }
 
 pub fn load_shader(device: &Device, shader_name: &str) -> wgpu::ShaderModule {

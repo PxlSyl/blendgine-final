@@ -16,10 +16,6 @@ import {
   // Nouveaux schémas AuthStore
   AuthStateSchema,
   UserSchema,
-  // Nouveaux schémas Filters
-  FilterStoreStateSchema,
-  FlipFlopStateSchema,
-  TintingSliceStateSchema,
   // Nouveaux schémas Generation
   ImageSetupPersistentStateSchema,
   ImageSetupStateSchema,
@@ -128,9 +124,6 @@ import {
   FilterInstanceSchema,
   FlipOptionsSchema,
   TintingOptionsSchema,
-  ApplyTintsAndFiltersArgsSchema,
-  FilterImageInfoSchema,
-  FilterProgressInfoSchema,
 } from '@/schemas/effect/filters';
 
 // Types inferred from schemas
@@ -188,42 +181,6 @@ export type FilterName = S.Schema.Type<typeof FilterNameSchema>;
 export type FilterOptions = S.Schema.Type<typeof FilterOptionsSchema>;
 export type Filters = S.Schema.Type<typeof FiltersSchema>;
 export type FilterInstance = S.Schema.Type<typeof FilterInstanceSchema>;
-export type EffectChain = FilterInstance[]; // EffectChain = Vec<FilterInstance> - cohérent avec le backend
-
-// Structure pour identifier une chaîne
-export interface EffectChainInfo {
-  id: string; // ID unique de la chaîne (créé côté frontend)
-  effects: EffectChain; // EffectChain est déjà FilterInstance[]
-  name?: string; // Nom optionnel de la chaîne
-  createdAt: string; // Timestamp de création
-}
-
-// Nouveau : Structure pour les pipelines d'effets
-export interface EffectPipeline {
-  id: string;
-  name: string; // "Pipeline 1", "Pipeline 2", etc.
-  effects: FilterInstance[];
-  distributionPercentage: number; // % de distribution de ce pipeline dans la génération finale
-}
-
-// Fonction utilitaire pour créer une nouvelle chaîne
-export const createEffectChain = (effects: EffectChain, name?: string): EffectChainInfo => {
-  return {
-    id: `chain_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-    effects,
-    name,
-    createdAt: new Date().toISOString(),
-  };
-};
-
-// Nouvelle fonction utilitaire pour créer un pipeline
-export const createEffectPipeline = (name: string): EffectPipeline => ({
-  id: `pipeline_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-  name,
-  effects: [],
-  distributionPercentage: 0, // Par défaut, pas de distribution
-});
-
 export type FlipOptions = S.Schema.Type<typeof FlipOptionsSchema>;
 export type TintingOptions = S.Schema.Type<typeof TintingOptionsSchema>;
 
@@ -242,10 +199,7 @@ export type SolanaMetadataConfig = S.Schema.Type<typeof SolanaMetadataConfigSche
 export type GeneratedImage = S.Schema.Type<typeof GeneratedImageSchema>;
 export type ConsoleMessage = S.Schema.Type<typeof ConsoleMessageSchema>;
 export type NFTGenerationArgs = S.Schema.Type<typeof NFTGenerationArgsSchema>;
-export type ApplyTintsAndFiltersArgs = S.Schema.Type<typeof ApplyTintsAndFiltersArgsSchema>;
 export type UpdateRarityAction = S.Schema.Type<typeof UpdateRarityActionSchema>;
-export type FilterImageInfo = S.Schema.Type<typeof FilterImageInfoSchema>;
-export type FilterProgressInfo = S.Schema.Type<typeof FilterProgressInfoSchema>;
 
 // Incompatibilities and forced combinations types
 export type Incompatibilities = S.Schema.Type<typeof IncompatibilitiesSchema>;
@@ -272,11 +226,6 @@ export type GenerationState = S.Schema.Type<typeof GenerationStateSchema>;
 // AuthStore types
 export type AuthState = S.Schema.Type<typeof AuthStateSchema>;
 export type User = S.Schema.Type<typeof UserSchema>;
-
-// FilterStore types
-export type FilterStoreState = S.Schema.Type<typeof FilterStoreStateSchema>;
-export type FlipFlopState = S.Schema.Type<typeof FlipFlopStateSchema>;
-export type TintingSliceState = S.Schema.Type<typeof TintingSliceStateSchema>;
 
 // GenerationStore types
 export type ImageSetupPersistentState = S.Schema.Type<typeof ImageSetupPersistentStateSchema>;

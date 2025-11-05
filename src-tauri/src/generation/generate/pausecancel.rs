@@ -131,7 +131,7 @@ pub async fn reset_all_states_and_cleanup() {
     file_watcher::stop_file_watcher();
 
     tracing::info!("🧹 [PAUSE_CANCEL] Cleaning up GPU contexts...");
-    cleanup_all_global_contexts();
+    cleanup_all_global_contexts().await;
 }
 
 #[tauri::command]

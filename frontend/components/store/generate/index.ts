@@ -5,11 +5,8 @@ import { useStore } from '..';
 import { useProjectSetupStore } from '../projectSetup/main';
 
 import { useRarityStore } from '../rarityStore/main';
-import { useFlipFlopStore } from '../filters/flipflop';
-import { useFilterStore } from '../filters/files';
 import { useUpdateStore } from '../update';
 import { useGenerationSettingsStore } from '../generationsettings';
-import { useTintingStore } from '../filters/main';
 import { useLayerOrderStore } from '../layerOrder/main';
 import { usePreview3DStore } from '../layerOrder/preview3Dstore';
 
@@ -19,17 +16,14 @@ import { useForcedCombinationStore } from '@/components/windows/rules/store/forc
 import { useRulesStore } from '@/components/windows/rules/store/main';
 import { useShortcutsStore } from '@/components/windows/shortcuts/store';
 import { useLayersviewStore } from '@/components/windows/layersview/store';
-import { useZoomEffectsStore } from '@/components/windows/zoom effects/store';
 import { useLayerOrderZoomStore } from '@/components/windows/layerOrderZoom/store';
 
 import type {
   SetInfo,
-  ApplyTintsAndFiltersArgs,
   ConsoleMessage,
   AnimationQualityConfig,
   ResizeConfig,
   SolanaMetadataConfig,
-  RarityConfig,
 } from '@/types/effect';
 import type { AppState, AppActions } from './types';
 
@@ -87,7 +81,6 @@ export const useGenerateStore = create<AppState & AppActions>((set, get) => ({
     void useRulesStore.getState().closeRulesWindow();
     void useShortcutsStore.getState().closeShortcutsWindow();
     void useLayersviewStore.getState().closeWindow();
-    void useZoomEffectsStore.getState().closeZoomEffectsWindow();
     void useLayerOrderZoomStore.getState().closeLayerOrderZoomWindow();
   },
   setShowDots: (show) => set({ showDots: show }),
@@ -110,9 +103,6 @@ export const useGenerateStore = create<AppState & AppActions>((set, get) => ({
   setIsCancelled: (cancelled) => set({ isCancelled: cancelled }),
   setIsCancelling: (cancelling) => set({ isCancelling: cancelling }), // 🆕 Nouvelle action
   setCurrentMode: (mode) => set({ currentMode: mode }),
-  setIsApplyingFilters: (value: boolean) => set({ isApplyingFilters: value }),
-  setFilterState: (state: 'idle' | 'cancelled' | 'applying' | 'success' | 'error') =>
-    set({ filterState: state }),
   setIsMixComplete: (complete) => set({ isMixComplete: complete }),
   setShowSuccessScreen: (show) => set({ showSuccessScreen: show }),
 
@@ -141,11 +131,6 @@ export const useGenerateStore = create<AppState & AppActions>((set, get) => ({
     setShowConfetti(false);
     setShowSuccessScreen(false);
     setShowDots(false);
-
-    const filterStore = useFilterStore.getState();
-    filterStore.setSourceFolder('');
-    filterStore.setDestinationFolder('');
-    filterStore.setHasUserSelectedFolders(false);
 
     await api.cancelNFTGeneration().catch((error) => {
       console.error('Error cancelling generation:', error);
@@ -347,9 +332,6 @@ export const useGenerateStore = create<AppState & AppActions>((set, get) => ({
 
       await api.setLastCreatedCollection(exportFolder);
 
-      const filterStore = useFilterStore.getState();
-      filterStore.setExportFormat(imageFormat);
-
       setGenerationState((prev) => ({ ...prev, status: 'completed' }));
       setShowDots(false);
       setTimeout(() => {
@@ -379,8 +361,6 @@ export const useGenerateStore = create<AppState & AppActions>((set, get) => ({
     const {
       setShowConfetti,
       setShowMenu,
-      setIsApplyingFilters,
-      setFilterState,
       setCurrentMode,
       setGenerationState,
       setShowSuccessScreen,
@@ -388,8 +368,6 @@ export const useGenerateStore = create<AppState & AppActions>((set, get) => ({
 
     setShowConfetti(false);
     setShowMenu(true);
-    setIsApplyingFilters(false);
-    setFilterState('idle');
     setCurrentMode('generation');
     setShowSuccessScreen(false);
     setGenerationState({
@@ -397,114 +375,6 @@ export const useGenerateStore = create<AppState & AppActions>((set, get) => ({
       error: null,
     });
     setMessage('');
-  },
-
-  handleApplyFilters: async () => {
-    const validation = await get().validateFilterParams();
-    if (!validation.isValid) {
-      return;
-    }
-
-    const { setMessage } = useStore.getState();
-    const {
-      setShowDots,
-      setFilterState,
-      setIsApplyingFilters,
-      setShowConfetti,
-      setCurrentMode,
-      setShowSuccessScreen,
-      setShowMenu,
-      closeAllWindows,
-      clearGenerationData,
-    } = get();
-
-    clearGenerationData();
-
-    closeAllWindows();
-
-    const { sourceFolder, destinationFolder, exportFormat, isAnimated, flipOptions } =
-      useFilterStore.getState();
-    const { collectionName } = useProjectSetupStore.getState();
-    const { imageFormat } = useGenerationSettingsStore.getState();
-
-    const { getRarityConfig } = useRarityStore.getState();
-    const { tintingOptions } = useTintingStore.getState();
-
-    setShowDots(true);
-    setFilterState('applying');
-    setIsApplyingFilters(true);
-    setShowMenu(false);
-    setMessage('Counting files in source folder...');
-
-    try {
-      const fileCount = await api.countImagesInFolder({
-        folderPath: sourceFolder,
-        imageFormat,
-        collectionName,
-      });
-
-      if (fileCount === 0) {
-        throw new Error('No images found in source folder');
-      }
-
-      setMessage(`Found ${fileCount} images. Applying filters...`);
-
-      if (!flipOptions) {
-        throw new Error('Flip options are not initialized');
-      }
-
-      const filteredPipelines = tintingOptions.pipelines.map((pipeline) => ({
-        ...pipeline,
-        effects: pipeline.effects.filter((effect) => effect.enabled),
-      }));
-
-      const args: ApplyTintsAndFiltersArgs = {
-        sourceFolder,
-        destinationFolder,
-        collectionName,
-        imageFormat,
-        exportFormat,
-        nftCount: fileCount,
-        rarityConfig: JSON.parse(JSON.stringify(getRarityConfig())) as RarityConfig,
-        tintingOptions: {
-          includeFilterInMetadata: tintingOptions.includeFilterInMetadata,
-          pipelines: filteredPipelines,
-          activePipelineId: tintingOptions.activePipelineId,
-        },
-        flipOptions: { ...flipOptions },
-        isAnimated,
-        effectChainId: `generation_chain_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-      };
-
-      const result = await api.applyTintsAndFilters(args);
-
-      if (result.success) {
-        const filterStore = useFilterStore.getState();
-        filterStore.setSourceFolder(sourceFolder);
-        filterStore.setDestinationFolder(destinationFolder);
-        filterStore.setHasUserSelectedFolders(true);
-        await filterStore.saveState();
-
-        setMessage('Filters applied successfully');
-        setFilterState('success');
-        setShowDots(false);
-        setTimeout(() => {
-          setShowConfetti(true);
-          setShowSuccessScreen(true);
-        }, 500);
-      } else {
-        throw new Error(result.error ?? 'An error occurred while applying filters');
-      }
-    } catch (error) {
-      console.error('Error in handleApplyFilters:', error);
-      setMessage(`Error: ${error instanceof Error ? error.message : 'An unknown error occurred'}`);
-      setFilterState('error');
-    } finally {
-      setIsApplyingFilters(false);
-      setShowDots(false);
-    }
-
-    setCurrentMode('filters');
   },
 
   handleMixLegendaryNFTs: async (legendaryFolder, exportFolder) => {
@@ -526,74 +396,5 @@ export const useGenerateStore = create<AppState & AppActions>((set, get) => ({
         `Error: ${error instanceof Error ? error.message : 'An unknown error occurred while mixing legendary NFTs'}`
       );
     }
-  },
-
-  handleFilterCancel: async () => {
-    const { setMessage } = useStore.getState();
-    const {
-      setShowDots,
-      setShowConfetti,
-      setFilterState,
-      setIsApplyingFilters,
-      setShowSuccessScreen,
-    } = get();
-
-    setFilterState('cancelled');
-    setIsApplyingFilters(false);
-    setShowConfetti(false);
-    setShowSuccessScreen(false);
-    setShowDots(false);
-    setMessage('Filter application cancelled');
-
-    await api.cancelFilterApplication().catch((error) => {
-      console.error('Error cancelling filter application:', error);
-    });
-  },
-
-  validateFilterParams: async () => {
-    const { sourceFolder, destinationFolder } = useFilterStore.getState();
-    const { tintingOptions } = useTintingStore.getState();
-    const { flipOptions } = useFlipFlopStore.getState();
-    const { setFilterState } = get();
-
-    if (!sourceFolder?.trim()) {
-      await api.showDialog({
-        title: 'Source Folder Required',
-        message: 'Please select your source folder',
-        dialogType: 'warning',
-      });
-      setFilterState('error');
-      return { isValid: false, error: 'Source folder not selected' };
-    }
-
-    if (!destinationFolder?.trim()) {
-      await api.showDialog({
-        title: 'Destination Folder Required',
-        message: 'Please select your destination folder',
-        dialogType: 'warning',
-      });
-      setFilterState('error');
-      return { isValid: false, error: 'Destination folder not selected' };
-    }
-
-    const hasActiveFilters = tintingOptions?.pipelines?.some(
-      (pipeline) => pipeline.effects.length > 0
-    );
-
-    const hasActiveFlips =
-      flipOptions &&
-      (flipOptions.horizontalFlipPercentage > 0 || flipOptions.verticalFlipPercentage > 0);
-
-    if (!hasActiveFilters && !hasActiveFlips) {
-      await api.showDialog({
-        title: 'No Effects Selected',
-        message: 'Please set a percentage for at least one filter or flip before applying',
-        dialogType: 'warning',
-      });
-      setFilterState('error');
-      return { isValid: false, error: 'No effects selected' };
-    }
-
-    return { isValid: true };
   },
 }));

@@ -4,30 +4,20 @@ import { join, normalize } from '@tauri-apps/api/path';
 import { Effect } from 'effect';
 import { LayerContent } from '../types/stores';
 import { ProjectConfig } from '@/components/store/saveLoad/types';
-import { TintingSliceState } from '../components/store/filters/types';
 
-import {
-  DialogOptions,
-  EffectPreviewResponseFile,
-  FolderContent,
-  NFTProgressInfo,
-  TauriApi,
-} from './types';
+import { DialogOptions, FolderContent, NFTProgressInfo, TauriApi } from './types';
 import {
   ProjectSetupState,
   ProjectSetup as ProjectSetupPersistentState,
   InitialFolderData,
   RarityConfig,
   TintingOptions,
-  ApplyTintsAndFiltersArgs,
   NFTGenerationArgs,
-  FilterProgressInfo,
   FlipOptions,
   IncompatibilitiesBySets,
   ForcedCombinationsBySets,
   SpritesheetLayout,
   Preferences,
-  EffectChainInfo,
   SetInfo,
 } from '../types/effect';
 import {
@@ -223,154 +213,6 @@ export class TauriApiService implements TauriApi {
 
   async quit(): Promise<void> {
     return await invoke<void>('quit');
-  }
-
-  async countImagesInFolder(params: {
-    folderPath: string;
-    imageFormat: string;
-    collectionName: string;
-  }): Promise<number> {
-    return await invoke<number>('count_images_in_folder', { params });
-  }
-
-  async updateEffectsState(newState: TintingSliceState): Promise<{ success: boolean }> {
-    await invoke('update_effects_state', { newState });
-    return { success: true };
-  }
-
-  async getEffectsState(): Promise<TintingSliceState> {
-    try {
-      const backendState = await invoke<TintingSliceState>('get_effects_state');
-      return backendState;
-    } catch (error) {
-      console.error('[API] Error calling get_effects_state:', error);
-      throw error;
-    }
-  }
-
-  async generatePreviewImagesFiles(params: {
-    effectChain?: EffectChainInfo;
-    basePath: string;
-    isSourceImageLocked?: boolean;
-    lockedSourceImagePath?: string;
-    exportFormat?: string;
-    isAnimated?: boolean;
-  }): Promise<EffectPreviewResponseFile> {
-    return await invoke<EffectPreviewResponseFile>('generate_preview_images_files', { params });
-  }
-
-  async applyTintsAndFilters(
-    args: ApplyTintsAndFiltersArgs
-  ): Promise<{ success: boolean; error?: string }> {
-    // Extraire les effets du pipeline actif
-    const activePipeline = args.tintingOptions.pipelines.find(
-      (p) => p.id === args.tintingOptions.activePipelineId
-    );
-    const activeEffects = activePipeline?.effects ?? [];
-
-    const transformedArgs = {
-      ...args,
-      tintingOptions: {
-        ...args.tintingOptions,
-        effects: activeEffects.map((filter) => ({
-          id: filter.id,
-          filterType: filter.filterType,
-          enabled: filter.enabled,
-          intensity: filter.intensity,
-          includeInMetadata: filter.includeInMetadata,
-          color1: filter.color1,
-          color2: filter.color2,
-          presetName: filter.presetName,
-          palette: filter.palette,
-          radius: filter.radius,
-          charset: filter.charset,
-          fontName: filter.fontName,
-          fontSize: filter.fontSize,
-          blockSize: filter.blockSize,
-          // Dithering specific options
-          ditherAlgorithm: filter.ditherAlgorithm,
-          colorReduction: filter.colorReduction,
-          diffusionThreshold: filter.diffusionThreshold,
-          diffusionDirection: filter.diffusionDirection,
-          // Options spécifiques par algorithme
-          bayerOptions: filter.bayerOptions,
-          sierraOptions: filter.sierraOptions,
-          clusteredDotOptions: filter.clusteredDotOptions,
-          halftoneOptions: filter.halftoneOptions,
-          customFactors: filter.customFactors,
-          filterBlendMode: filter.filterBlendMode,
-          // Bad TV specific options
-          badTvOptions: filter.badTvOptions,
-        })),
-      },
-      // Inclure l'ID de chaîne si disponible
-      effectChainId: args.effectChainId,
-    };
-
-    const result = await invoke<{ success: boolean; error?: string }>('apply_tints_and_filters', {
-      args: transformedArgs,
-    });
-
-    return result;
-  }
-
-  onFilterApplicationProgress(callback: (filterInfo: FilterProgressInfo) => void): () => void {
-    let cancelled = false;
-
-    const processingListenerPromise = listen<FilterProgressInfo>('filter-progress', (event) => {
-      if (!cancelled) {
-        callback({
-          currentCount: event.payload.currentCount,
-          totalCount: event.payload.totalCount,
-          estimatedCount: event.payload.estimatedCount,
-          currentImage: {
-            path: event.payload.currentImage.path,
-            name: event.payload.currentImage.name,
-            nftNumber: event.payload.currentImage.nftNumber,
-            filterType: event.payload.currentImage.filterType,
-            filterDetails: event.payload.currentImage.filterDetails,
-            horizontalFlipApplied: event.payload.currentImage.horizontalFlipApplied,
-            verticalFlipApplied: event.payload.currentImage.verticalFlipApplied,
-          },
-          status: event.payload.status,
-        });
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      processingListenerPromise
-        .then((processingListener) => {
-          if (!cancelled && typeof processingListener === 'function') {
-            processingListener();
-          }
-        })
-        .catch(() => {
-          // Silent fail for race conditions
-        });
-    };
-  }
-
-  async toggleFilterPause(isPaused: boolean): Promise<{ success: boolean; message: string }> {
-    return await invoke<{ success: boolean; message: string }>('toggle_filter_pause', {
-      isPaused,
-    });
-  }
-
-  async cancelFilterApplication(): Promise<{ success: boolean; message?: string }> {
-    try {
-      await invoke('cancel_filter_application');
-      return {
-        success: true,
-        message: 'Filter application cancelled successfully',
-      };
-    } catch (error) {
-      console.error('Error cancelling filter application:', error);
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Failed to cancel filter application',
-      };
-    }
   }
 
   async getLastCreatedCollection(): Promise<string> {

@@ -31,33 +31,10 @@ export interface NFTProgressInfo {
   };
 }
 
-export type EffectPreviewResponseFile =
-  | { status: 'Success'; data: EffectPreviewImageFile }
-  | { status: 'Error'; error: string }
-  | { status: 'Cancelled' };
-
-export interface EffectPreviewImageFile {
-  filePath: string;
-  originalFilePath: string;
-  mimeType: string;
-  originalMimeType: string;
-}
-
-export type FilterProgressResponse = {
-  count: number;
-  total: number;
-  estimatedCount: number;
-};
-
 export type FolderSelectionResponse =
   | { status: 'Confirmed'; path: string }
   | { status: 'Cancelled' }
   | { status: 'Error'; error: string };
-
-export type FilterApplicationResponse =
-  | { status: 'Success'; data: { path: string } }
-  | { status: 'Error'; error: string }
-  | { status: 'Cancelled' };
 
 export interface DialogOptions {
   title: string;

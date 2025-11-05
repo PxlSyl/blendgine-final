@@ -50,15 +50,6 @@ pub struct GenerationResponse {
     pub error: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct GenerationCompleteEvent {
-    pub success: bool,
-    pub total_generated: u32,
-    pub export_path: String,
-    pub duration_ms: u64,
-}
-
 impl FromStr for Blockchain {
     type Err = String;
 

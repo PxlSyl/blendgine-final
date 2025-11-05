@@ -43,9 +43,6 @@ use window_manager::{
     },
     window_communication::emit_to_window,
     window_manager::*,
-    zoom_effects_window::{
-        close_zoom_effects_window, is_zoom_effects_window_open, open_zoom_effects_window,
-    },
 };
 
 // Système de fichiers
@@ -170,10 +167,6 @@ fn main() {
             open_layersview_window,
             close_layersview_window,
             is_layersview_window_open,
-            // Zoom effects window commands
-            open_zoom_effects_window,
-            close_zoom_effects_window,
-            is_zoom_effects_window_open,
             // Layer order zoom window commands
             open_layer_order_zoom_window,
             close_layer_order_zoom_window,

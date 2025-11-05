@@ -1,1 +1,0 @@
-export { useFiltersSetup } from './useFiltersSetup';

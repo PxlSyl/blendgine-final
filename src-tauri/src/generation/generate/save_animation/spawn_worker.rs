@@ -12,6 +12,7 @@ use crate::types::InterpolationMethod;
 
 pub async fn spawn_animation_worker(options: WorkerOptions) -> Result<()> {
     let interpolation_engine = InterpolationEngine::get_or_create_global()
+        .await
         .ok_or_else(|| anyhow::anyhow!("Failed to get or create interpolation engine"))?;
 
     let frames = options.frames.clone();
@@ -133,7 +134,9 @@ pub async fn spawn_animation_worker(options: WorkerOptions) -> Result<()> {
     interpolation_engine.clear_cache();
 
     let resized_frames = if options.width != 0 && options.height != 0 {
-        let resize_converter = ResizeConverter::new().map_err(|e| anyhow::anyhow!("{}", e))?;
+        let resize_converter = ResizeConverter::new()
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
         resize_converter
             .resize_images(
                 &interpolated_frames,

@@ -149,8 +149,46 @@ impl BlendConverter {
         })
     }
 
+    pub async fn initialize_global_gpu_context() -> Option<Arc<GpuBlendContext>> {
+        // First check if already initialized
+        {
+            let global_ctx = if let Some(ctx) = GLOBAL_GPU_CONTEXT.try_lock() {
+                ctx
+            } else {
+                eprintln!("⚠️ [BLEND] Failed to lock global GPU context, returning None");
+                return None;
+            };
+
+            if let Some(ref ctx) = *global_ctx {
+                return Some(ctx.clone());
+            }
+            // Lock is dropped here
+        }
+
+        // Create context without holding the lock (await is outside the lock)
+        match GpuBlendContext::new().await {
+            Ok(ctx) => {
+                let arc_ctx = Arc::new(ctx);
+
+                // Now lock again to store the result
+                if let Some(mut global_ctx) = GLOBAL_GPU_CONTEXT.try_lock() {
+                    *global_ctx = Some(arc_ctx.clone());
+                    println!("GPU blend context created and cached");
+                    Some(arc_ctx)
+                } else {
+                    eprintln!("⚠️ [BLEND] Failed to lock global GPU context for storing");
+                    Some(arc_ctx)
+                }
+            }
+            Err(e) => {
+                println!("Failed to create GPU blend context: {}", e);
+                None
+            }
+        }
+    }
+
     fn get_or_create_gpu_context() -> Option<Arc<GpuBlendContext>> {
-        let mut global_ctx = if let Some(ctx) = GLOBAL_GPU_CONTEXT.try_lock() {
+        let global_ctx = if let Some(ctx) = GLOBAL_GPU_CONTEXT.try_lock() {
             ctx
         } else {
             eprintln!("⚠️ [BLEND] Failed to lock global GPU context, returning None");
@@ -161,18 +199,8 @@ impl BlendConverter {
             return Some(ctx.clone());
         }
 
-        match GpuBlendContext::new() {
-            Ok(ctx) => {
-                let arc_ctx = Arc::new(ctx);
-                *global_ctx = Some(arc_ctx.clone());
-                println!("GPU blend context created and cached");
-                Some(arc_ctx)
-            }
-            Err(e) => {
-                println!("Failed to create GPU blend context: {}", e);
-                None
-            }
-        }
+        // GPU context must be initialized via initialize_global_gpu_context() first
+        None
     }
 
     pub fn clear_global_gpu_context() {

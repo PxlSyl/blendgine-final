@@ -1,1 +1,0 @@
-export { BadTvControls } from './BadTvControls';

@@ -242,8 +242,8 @@ pub struct InterpolationEngine {
 }
 
 impl InterpolationEngine {
-    pub fn new() -> Result<Self> {
-        let engine = WgpuEngine::new()?;
+    pub async fn new() -> Result<Self> {
+        let engine = WgpuEngine::new().await?;
 
         let bind_group_layout = Self::create_bind_group_layout(&engine.device());
         let motion_flow_bind_group_layout =
@@ -558,19 +558,19 @@ impl InterpolationEngine {
         }
     }
 
-    pub fn get_or_create_global() -> Option<Arc<InterpolationEngine>> {
+    pub async fn get_or_create_global() -> Option<Arc<InterpolationEngine>> {
         {
-            let global_engine = GLOBAL_INTERPOLATION_ENGINE.lock();
+            let global_engine = GLOBAL_INTERPOLATION_ENGINE.lock().await;
             if let Some(ref engine) = *global_engine {
                 return Some(engine.clone());
             }
         }
 
-        match Self::new() {
+        match Self::new().await {
             Ok(engine) => {
                 let arc_engine = Arc::new(engine);
                 {
-                    let mut global_engine = GLOBAL_INTERPOLATION_ENGINE.lock();
+                    let mut global_engine = GLOBAL_INTERPOLATION_ENGINE.lock().await;
                     *global_engine = Some(arc_engine.clone());
                 }
                 println!("Interpolation engine created and cached");
@@ -583,8 +583,8 @@ impl InterpolationEngine {
         }
     }
 
-    pub fn clear_global_context() {
-        let mut global_engine = GLOBAL_INTERPOLATION_ENGINE.lock();
+    pub async fn clear_global_context() {
+        let mut global_engine = GLOBAL_INTERPOLATION_ENGINE.lock().await;
         *global_engine = None;
         println!("Global interpolation engine cleared");
     }

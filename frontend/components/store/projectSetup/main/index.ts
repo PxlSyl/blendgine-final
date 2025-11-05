@@ -15,7 +15,6 @@ import { useLayerOrderStore } from '../../layerOrder/main';
 import { useRarityStore } from '../../rarityStore/main';
 import { useGenerationSettingsStore } from '../../generationsettings';
 import { useLayerPreviewStore } from '../layerPreviewStore';
-import { useFilterStore } from '../../filters/files';
 import { usePreview3DStore } from '../../layerOrder/preview3Dstore';
 import { usePreviewCanvasStore } from '../../layerOrder/previewCanvasStore';
 import { useLegendaryNFTStore } from '../../legendary';
@@ -411,7 +410,6 @@ export const useProjectSetupStore = create<ProjectSetupState & ProjectSetupActio
       const { resetColorStore } = useColorStore.getState();
       const { resetGenerationStore } = useGenerationSettingsStore.getState();
       const layerPreviewStore = useLayerPreviewStore.getState();
-      const { resetFilterStore } = useFilterStore.getState();
       const { resetRarityUIStore } = useRarityUIStore.getState();
       const { resetPreview3DStore } = usePreview3DStore.getState();
       const { resetPreviewCanvasStore } = usePreviewCanvasStore.getState();
@@ -425,7 +423,6 @@ export const useProjectSetupStore = create<ProjectSetupState & ProjectSetupActio
             resetPreview3DStore(),
             resetPreviewCanvasStore(),
             resetRarityUIStore(),
-            resetFilterStore(),
             resetColorStore(),
           ])
         )

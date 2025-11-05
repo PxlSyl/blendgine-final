@@ -7,11 +7,8 @@ export default defineConfig({
   clearScreen: false,
   publicDir: 'public',
   base: './',
-  
-  plugins: [
-    react(),
-    checker({ typescript: true })
-  ],
+
+  plugins: [react(), checker({ typescript: true })],
 
   resolve: {
     alias: {
@@ -33,9 +30,8 @@ export default defineConfig({
         shortcuts: resolve(__dirname, 'shortcuts.html'),
         layers: resolve(__dirname, 'layersview.html'),
         'theme-colors': resolve(__dirname, 'theme-colors.html'),
-        'zoom-effects': resolve(__dirname, 'zoom-effects.html'),
-        'layer-order-zoom': resolve(__dirname, 'layer-order-zoom.html')
-      }
+        'layer-order-zoom': resolve(__dirname, 'layer-order-zoom.html'),
+      },
     },
     chunkSizeWarningLimit: 2000,
   },
@@ -45,25 +41,25 @@ export default defineConfig({
     strictPort: true,
     host: 'localhost',
     watch: {
-      ignored: ["**/src-tauri/**"]
+      ignored: ['**/src-tauri/**'],
     },
     fs: {
       strict: true,
       allow: ['..'],
-    }
+    },
   },
 
   optimizeDeps: {
-    exclude: ['@tauri-apps/api']
+    exclude: ['@tauri-apps/api'],
   },
 
   envPrefix: ['VITE_', 'TAURI_'],
 
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
-    'process.env.PLATFORM': '"tauri"'
+    'process.env.PLATFORM': '"tauri"',
   },
   json: {
-    stringify: true
-  }
-}); 
+    stringify: true,
+  },
+});

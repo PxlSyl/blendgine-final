@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::Result;
-use image::DynamicImage;
+use image::{DynamicImage, GenericImageView};
 
 pub fn encode_mp4_direct(
     ffmpeg_path: &std::path::PathBuf,
@@ -69,10 +69,24 @@ pub fn encode_mp4_direct(
     let mut child = cmd.spawn()?;
     let mut stdin = child.stdin.take().unwrap();
 
-    for frame in frames {
+    let (expected_width, expected_height) = frames[0].dimensions();
+
+    for (idx, frame) in frames.iter().enumerate() {
+        let (w, h) = frame.dimensions();
+        if w != expected_width || h != expected_height {
+            eprintln!(
+                "⚠️ [MP4] Frame {} has dimensions {}x{}, expected {}x{}",
+                idx, w, h, expected_width, expected_height
+            );
+        }
+
+        // Convert to RGBA8 to ensure consistent format
+        let rgba_frame = frame.to_rgba8();
+        let dynamic_frame = DynamicImage::ImageRgba8(rgba_frame);
+
         let mut buffer = Vec::new();
         let mut cursor = Cursor::new(&mut buffer);
-        frame.write_to(&mut cursor, image::ImageFormat::Png)?;
+        dynamic_frame.write_to(&mut cursor, image::ImageFormat::Png)?;
         stdin.write_all(&buffer)?;
     }
 

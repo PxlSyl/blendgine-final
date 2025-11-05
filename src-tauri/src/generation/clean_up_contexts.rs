@@ -7,14 +7,14 @@ use crate::{
     },
     generation::generate::generate_single::file_watcher,
 };
-pub fn cleanup_all_global_contexts() {
+pub async fn cleanup_all_global_contexts() {
     println!("🧹 [GENERATE] Stopping grid file watcher...");
     file_watcher::stop_file_watcher();
     println!("🧹 [CLEANUP] Cleaning up all global contexts...");
     // gpu
     BlendConverter::clear_global_gpu_context();
-    InterpolationEngine::clear_global_context();
-    ResizeConverter::clear_global_gpu_manager();
+    InterpolationEngine::clear_global_context().await;
+    ResizeConverter::clear_global_gpu_manager().await;
     // generation
     cleanup_static_caches_final_by_preference();
     clear_generation_files_caches();

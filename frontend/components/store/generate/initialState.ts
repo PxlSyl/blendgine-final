@@ -11,8 +11,6 @@ export const initialState: AppState = {
   isCancelled: false,
   isCancelling: false,
   currentMode: 'generation',
-  isApplyingFilters: false,
-  filterState: 'idle' as 'idle' | 'cancelled' | 'applying' | 'success' | 'error',
   isMixComplete: false,
   showSuccessScreen: false,
   consoleMessages: [],

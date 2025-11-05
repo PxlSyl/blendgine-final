@@ -451,7 +451,7 @@ pub async fn generate_nfts(
         global_index,
     );
 
-    cleanup_all_global_contexts();
+    cleanup_all_global_contexts().await;
 
     Ok((true, "Generation succesful!".to_string()))
 }

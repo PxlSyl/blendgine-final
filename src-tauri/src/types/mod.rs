@@ -24,14 +24,6 @@ pub struct ProjectSetupState {
     pub spritesheet_layout: Option<SpritesheetLayout>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-pub struct OtherParametersStorage {
-    pub hash: HashMap<String, String>,
-    #[serde(default)]
-    pub last_created_collection: String,
-}
-
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Preferences {
     pub dark_mode: bool,
@@ -62,8 +54,8 @@ impl Default for ImageSetupState {
     fn default() -> Self {
         Self {
             image_format: "png".to_string(),
-            base_width: 1024,  // ✅ Valeur par défaut raisonnable au lieu de 0
-            base_height: 1024, // ✅ Valeur par défaut raisonnable au lieu de 0
+            base_width: 1024,
+            base_height: 1024,
             final_width: 1024,
             final_height: 1024,
             fixed_proportion: true,
@@ -111,13 +103,6 @@ pub struct LayerConfig {
     pub locked: Option<bool>,
     pub traits: HashMap<String, TraitConfig>,
     pub default_blend: BlendProperties,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LayerInfo {
-    pub layer: String,
-    pub traits: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -212,69 +197,6 @@ pub struct NFTTrait {
 pub struct GenerationResult {
     pub traits: Vec<NFTTrait>,
     pub original_index: u32,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectConfig {
-    pub collection_name: String,
-    pub collection_description: String,
-    pub nft_count: u32,
-    pub selected_folder: String,
-    pub export_folder: String,
-    pub ordered_layers: Vec<String>,
-    pub rarity_config: RarityConfig,
-    pub base_width: u32,
-    pub base_height: u32,
-    pub final_width: u32,
-    pub final_height: u32,
-    pub fixed_proportion: bool,
-    pub image_format: String,
-    pub incompatibilities: Incompatibilities,
-    pub incompatibility_selectors: Vec<IncompatibilitySelectorType>,
-    pub target_blockchain: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct LayerOrderState {
-    pub ordered_layers: Vec<String>,
-    pub rarity_config: RarityConfig,
-    pub possible_combinations: u64,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct IncompatibilitySelectorType {
-    pub id: u32,
-    pub first_layer: String,
-    pub first_trait: String,
-    pub second_layer: String,
-    pub second_trait: String,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct IncompatibilityState {
-    pub incompatibilities: Incompatibilities,
-    pub incompatibility_selectors: Vec<IncompatibilitySelectorType>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ForcedCombinationSelectorType {
-    pub id: u32,
-    pub first_trait: String,
-    pub first_layer: String,
-    pub second_trait: String,
-    pub second_layer: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct ForcedCombinationState {
-    pub forced_combinations: ForcedCombinations,
-    pub forced_combination_selectors: Vec<ForcedCombinationSelectorType>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -688,9 +610,4 @@ pub struct SpritesheetLayout {
 pub struct GlobalRarityInput {
     pub rarity_config: RarityConfig,
     pub sets: HashMap<String, SetInfo>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExternalFiles {
-    pub sprite_sheets: Vec<String>,
 }

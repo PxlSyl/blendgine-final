@@ -42,13 +42,6 @@ export const AppStateSchema = S.Struct({
   generationState: GenerationStateSchema,
   isCancelled: S.Boolean,
   currentMode: S.Union(S.Literal('generation'), S.Literal('filters')),
-  isApplyingFilters: S.Boolean,
-  filterState: S.Union(
-    S.Literal('idle'),
-    S.Literal('applying'),
-    S.Literal('success'),
-    S.Literal('error')
-  ),
   isMixComplete: S.Boolean,
   showSuccessScreen: S.Boolean,
 });
@@ -89,8 +82,6 @@ export const createDefaultAppState = (): AppState => ({
   generationState: createDefaultGenerationState(),
   isCancelled: false,
   currentMode: 'generation',
-  isApplyingFilters: false,
-  filterState: 'idle',
   isMixComplete: false,
   showSuccessScreen: false,
 });

@@ -3,14 +3,9 @@ import React from 'react';
 import type { FooterActionsProps } from './types';
 
 import { RefreshIcon } from '@/components/icons';
-import { EffectsIcon, LegendaryIcon } from '@/components/icons/StepIcons';
+import { LegendaryIcon } from '@/components/icons/StepIcons';
 
 const BUTTON_CONFIGS = {
-  filter: {
-    onClick: 'handleApplyFilters',
-    icon: EffectsIcon,
-    text: 'Apply To Collection',
-  },
   generation: {
     onClick: 'handleGenerate',
     icon: RefreshIcon,
@@ -24,7 +19,7 @@ const BUTTON_CONFIGS = {
 } as const;
 
 interface GenerateButtonProps {
-  type: 'filter' | 'generation' | 'legendary' | undefined;
+  type: 'generation' | 'legendary' | undefined;
   disabled: boolean;
   handlers: FooterActionsProps['handlers'];
   isProcessing: boolean;

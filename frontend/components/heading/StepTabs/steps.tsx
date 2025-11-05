@@ -2,7 +2,6 @@ import {
   ProjectIcon,
   LayersIcon,
   RarityIcon,
-  EffectsIcon,
   LegendaryIcon,
   BulkEditIcon,
   ChartIcon,
@@ -15,8 +14,7 @@ export const createsteps = [
   { id: 2, label: 'Layers', icon: <LayersIcon className="w-5 h-5" /> },
   { id: 3, label: 'Rarity', icon: <RarityIcon className="w-5 h-5" /> },
   { id: 4, label: 'Generation', icon: <RefreshIcon className="w-5 h-5" /> },
-  { id: 5, label: 'Effects', icon: <EffectsIcon className="w-5 h-5" /> },
-  { id: 6, label: 'Legendary', icon: <LegendaryIcon className="w-5 h-7" /> },
+  { id: 5, label: 'Legendary', icon: <LegendaryIcon className="w-5 h-7" /> },
 ];
 
 export const managesteps = [

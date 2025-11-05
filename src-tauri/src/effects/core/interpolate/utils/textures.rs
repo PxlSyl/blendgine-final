@@ -135,6 +135,16 @@ impl InterpolationEngine {
             image_data.extend_from_slice(&data[row_start..row_end]);
         }
 
+        // Validate buffer size before creating image
+        let expected_size = (width * height * 4) as usize;
+        let actual_size = image_data.len();
+        if actual_size != expected_size {
+            return Err(anyhow::anyhow!(
+                "Buffer size mismatch: expected {} bytes for {}x{} image, got {} bytes. bytes_per_row={}, aligned={}",
+                expected_size, width, height, actual_size, bytes_per_row, aligned_bytes_per_row
+            ));
+        }
+
         let rgba = RgbaImage::from_raw(width, height, image_data)
             .ok_or_else(|| anyhow::anyhow!("Failed to create image from raw data"))?;
 

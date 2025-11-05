@@ -4,12 +4,9 @@ import { listen } from '@tauri-apps/api/event';
 import { useGenerateStore } from '@/components/store/generate';
 
 import GeneratingAnimation from './GeneratingAnimation';
-import ApplyingFiltersAnimation from './ApplyingFiltersAnimation';
 
 const AnimationOverlay = React.memo(() => {
   const {
-    isApplyingFilters,
-    filterState,
     generationState,
     showDots,
     showConfetti,
@@ -39,18 +36,6 @@ const AnimationOverlay = React.memo(() => {
       console.error('Error setting up animation listeners:', error);
     });
   }, [setIsCancelling]);
-
-  if (isApplyingFilters || filterState === 'success' || filterState === 'cancelled') {
-    return (
-      <ApplyingFiltersAnimation
-        showDots={showDots}
-        showConfetti={showConfetti}
-        showSuccessScreen={filterState === 'success'}
-        onBackToMenu={backToMenu}
-        onQuit={handleQuit}
-      />
-    );
-  }
 
   if (
     generationState.status === 'generating' ||

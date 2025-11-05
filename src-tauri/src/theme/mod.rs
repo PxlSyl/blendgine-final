@@ -82,20 +82,6 @@ pub async fn set_theme(dark_mode: bool, app_handle: tauri::AppHandle) -> Result<
             .map_err(|e| e.to_string())?;
     }
 
-    if let Some(zoom_effects_window) = app_handle.get_webview_window("zoom-effects-window") {
-        zoom_effects_window
-            .set_theme(if dark_mode {
-                Some(tauri::Theme::Dark)
-            } else {
-                Some(tauri::Theme::Light)
-            })
-            .map_err(|e| e.to_string())?;
-
-        zoom_effects_window
-            .emit("zoom-effects-theme-init", dark_mode)
-            .map_err(|e| e.to_string())?;
-    }
-
     Ok(())
 }
 
@@ -143,12 +129,6 @@ pub async fn set_color_theme(
     if let Some(layer_order_zoom_window) = app_handle.get_webview_window("layer-order-zoom-window")
     {
         layer_order_zoom_window
-            .emit("color-theme-changed", theme_name.clone())
-            .map_err(|e| e.to_string())?;
-    }
-
-    if let Some(zoom_effects_window) = app_handle.get_webview_window("zoom-effects-window") {
-        zoom_effects_window
             .emit("color-theme-changed", theme_name.clone())
             .map_err(|e| e.to_string())?;
     }
