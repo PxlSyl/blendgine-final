@@ -1,0 +1,40 @@
+NFT Boss - Keyboard Shortcuts
+===========================
+
+Project Management
+----------------
+Ctrl + P : Project setup
+Ctrl + O : Select folder
+Ctrl + R : Reload project
+Ctrl + S : Save project
+Ctrl + L : Load project
+
+Layer Management
+---------------
+Ctrl + 2 : Switch to 2D View
+Ctrl + 3 : Switch to 3D View
+Ctrl + I : Open Incompatibilities
+Ctrl + F : Open Forced combinations
+Ctrl + T : Open Rarity Percentages
+Ctrl + C : Open Rarity Charts
+Ctrl + G : Open Generation
+Shift + G : Generate preview
+
+Collection Management
+-------------------
+Ctrl + V : View collection rarity
+Ctrl + J : Edit single json file
+Ctrl + B : Json bulk editing
+
+Special Features
+---------------
+Ctrl + E : Open Effects
+Ctrl + D : Open Legendary
+
+Global Modals
+------------
+Shift + I : Open Image Preview Modal
+Shift + S : Open Shortcuts Modal
+Shift + A : Open Account Modal
+
+Note: Some shortcuts may only work when a project is loaded or when specific conditions are met. 

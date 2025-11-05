@@ -1,0 +1,2 @@
+# This file ensures the bin/ directory is tracked in git
+# FFmpeg binaries will be downloaded by setup scripts and are ignored by .gitignore 

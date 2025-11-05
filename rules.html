@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Blendgine Rules</title>
+    <style>
+      :root {
+        --window-width: 100vw;
+        --window-height: 100vh;
+      }
+      
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+      
+      #rules-root {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="rules-root"></div>
+    <script>
+      (function() {
+        if (window.__TAURI__) {
+          const { listen } = window.__TAURI__.event;
+          
+          listen("rules-window-resized", (event) => {
+            const { payload } = event;
+            if (payload && typeof payload.width === 'number' && typeof payload.height === 'number') {
+              document.documentElement.style.setProperty('--window-width', `${payload.width}px`);
+              document.documentElement.style.setProperty('--window-height', `${payload.height}px`);
+              
+              const customEvent = new CustomEvent('tauri-window-resize', { 
+                detail: { width: payload.width, height: payload.height }
+              });
+              window.dispatchEvent(customEvent);
+              
+            }
+          });
+          
+          listen("rules-init", (event) => {
+            const mode = event.payload;
+            localStorage.setItem('rules-initial-mode', mode);
+          });
+          
+          listen("rules-theme-init", (event) => {
+            const isDarkMode = event.payload;
+            document.documentElement.classList.toggle('dark', isDarkMode);
+            localStorage.setItem('rules-dark-mode', isDarkMode ? 'true' : 'false');
+          });
+          
+          listen("rules-mode-changed", (event) => {
+            const mode = event.payload;
+            const customEvent = new CustomEvent('rules-mode-changed', { 
+              detail: { mode }
+            });
+            window.dispatchEvent(customEvent);
+          });
+        } else {
+          console.warn('[Rules HTML] Tauri API not available');
+        }
+        
+        const updateInitialSize = () => {
+          document.documentElement.style.setProperty('--window-width', `${window.innerWidth}px`);
+          document.documentElement.style.setProperty('--window-height', `${window.innerHeight}px`);
+        };
+        
+        updateInitialSize();
+        
+        window.addEventListener('resize', () => {
+          updateInitialSize();      
+          const event = new CustomEvent('tauri-window-resize', { 
+            detail: { width: window.innerWidth, height: window.innerHeight }
+          });
+          window.dispatchEvent(event);
+        });
+      })();
+    </script>
+    <script type="module" src="/frontend/rules.tsx"></script>
+  </body>
+</html> 

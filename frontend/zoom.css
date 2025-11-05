@@ -1,0 +1,122 @@
+/* Variables de base pour les dimensions de la fenêtre */
+:root {
+    --window-width: 100vw;
+    --window-height: 100vh;
+    --footer-height: 5px;
+    --header-height: 5px;
+    --content-height: calc(var(--window-height) - var(--footer-height) - var(--header-height));
+}
+
+/* Base styles - Structure seulement */
+html,
+body,
+#root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+*,
+*:before,
+*:after {
+    box-sizing: inherit;
+}
+
+/* Main layout containers */
+.zoom-effects-window-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Content container - non scrollable */
+.content-scrollable {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    max-height: var(--content-height);
+}
+
+.content-scrollable>div {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0;
+}
+
+/* Ensure that the bottom gradient stays at the bottom */
+.gradient-bar-fixed {
+    position: relative;
+    width: 100%;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+/* Canvas container styles */
+.zoom-effects-canvas-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.zoom-effects-canvas {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    cursor: move;
+}
+
+.zoom-effects-controls {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.zoom-effects-button {
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    background-color: var(--button-background);
+    color: var(--button-text);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.zoom-effects-button:hover {
+    background-color: var(--button-hover-background);
+}
+
+.zoom-effects-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .content-scrollable>div {
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .content-scrollable>div {
+        padding: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .content-scrollable>div {
+        padding: 0.25rem;
+    }
+}

@@ -1,0 +1,135 @@
+/* Variables de base pour les dimensions de la fenêtre */
+:root {
+    --window-width: 100vw;
+    --window-height: 100vh;
+    --footer-height: 5px;
+    --header-height: 5px;
+    --content-height: calc(var(--window-height) - var(--footer-height) - var(--header-height));
+}
+
+/* Base styles - Structure seulement */
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+*,
+*:before,
+*:after {
+    box-sizing: inherit;
+}
+
+/* Root container */
+#rules-root {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Main layout containers */
+.rules-window-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.content-scrollable {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    min-height: 0;
+    /* Important pour le bon comportement flexbox */
+    max-height: var(--content-height);
+}
+
+.content-scrollable>div {
+    padding: 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    /* Important pour le bon comportement flexbox */
+}
+
+/* Ensure that the bottom gradient stays at the bottom */
+.gradient-bar-fixed {
+    position: relative;
+    width: 100%;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+/* Make sure the lists scroll properly */
+.combination-list,
+.space-y-2.p-3.rounded-sm.shadow-md.overflow-y-auto {
+    overflow-y: auto !important;
+    max-height: min(350px, calc(var(--content-height) - 100px));
+    flex: 1;
+    min-height: 0;
+    /* Crucial pour le scroll */
+}
+
+/* Trait preview adaptations */
+.trait-preview {
+    aspect-ratio: 1/1;
+    /* Maintenir le ratio carré */
+    min-width: 80px;
+    max-width: 120px;
+    width: clamp(80px, 15vw, 120px);
+    /* Taille responsive */
+}
+
+/* Styles responsifs pour l'adaptation globale */
+@media (max-width: 768px) {
+    .content-scrollable>div {
+        padding: 0.75rem;
+    }
+
+    .trait-preview {
+        width: clamp(70px, 14vw, 100px);
+    }
+
+    .combination-list,
+    .space-y-2.p-3.rounded-sm.shadow-md.overflow-y-auto {
+        max-height: min(300px, calc(var(--content-height) - 80px));
+    }
+}
+
+@media (max-width: 640px) {
+    .content-scrollable>div {
+        padding: 0.5rem;
+    }
+
+    .trait-preview {
+        width: clamp(60px, 12vw, 90px);
+    }
+
+    .combination-list,
+    .space-y-2.p-3.rounded-sm.shadow-md.overflow-y-auto {
+        max-height: min(250px, calc(var(--content-height) - 70px));
+    }
+}
+
+@media (max-width: 480px) {
+    .content-scrollable>div {
+        padding: 0.25rem;
+    }
+
+    .trait-preview {
+        width: clamp(50px, 10vw, 75px);
+    }
+
+    .combination-list,
+    .space-y-2.p-3.rounded-sm.shadow-md.overflow-y-auto {
+        max-height: min(200px, calc(var(--content-height) - 60px));
+    }
+}

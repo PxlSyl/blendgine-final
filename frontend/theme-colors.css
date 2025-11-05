@@ -1,0 +1,64 @@
+/* Theme Colors Window Styles */
+
+/* Variables de base pour les dimensions de la fenêtre */
+:root {
+    --window-width: 100vw;
+    --window-height: 100vh;
+    --footer-height: 5px;
+    --header-height: 5px;
+    --content-height: calc(var(--window-height) - var(--footer-height) - var(--header-height));
+}
+
+/* Basic reset for the window */
+html,
+body,
+#root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Main window container - fixes header and footer */
+.window-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Main layout containers */
+.theme-colors-window-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Content container - scrollable */
+.content-scrollable {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    min-height: 0;
+    /* Important pour le bon comportement flexbox */
+    max-height: var(--content-height);
+}
+
+.content-scrollable>div {
+    padding: 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.gradient-bar-fixed {
+    position: relative;
+    width: 100%;
+    z-index: 10;
+    flex-shrink: 0;
+}

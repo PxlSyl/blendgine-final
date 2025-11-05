@@ -1,0 +1,112 @@
+/* Variables de base pour les dimensions de la fenêtre layersview */
+:root {
+    --window-width: 100vw;
+    --window-height: 100vh;
+    --footer-height: 8px;
+    --header-height: 8px;
+    --content-height: calc(var(--window-height) - var(--footer-height) - var(--header-height));
+}
+
+/* Base styles - Structure seulement */
+html,
+body,
+#root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+*,
+*:before,
+*:after {
+    box-sizing: inherit;
+}
+
+/* Main layout containers */
+.layersview-window-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure scrollable content works properly */
+.content-scrollable {
+    flex: 1;
+    overflow: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.content-scrollable>div {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Image container styles */
+.image-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Ensure that the bottom gradient stays at the bottom */
+.gradient-bar-fixed {
+    position: relative;
+    width: 100%;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+/* Styles pour les barres en haut et en bas */
+.layersview-window-container .bg-gray-300.dark\:bg-gray-900 {
+    position: relative;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+/* Styles spécifiques pour les barres de gradient */
+.gradient-bar-top {
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 10;
+}
+
+.gradient-bar-bottom {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    z-index: 10;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .content-scrollable>div {
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .content-scrollable>div {
+        padding: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .content-scrollable>div {
+        padding: 0.25rem;
+    }
+}

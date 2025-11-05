@@ -1,0 +1,96 @@
+/* Variables de base pour les dimensions de la fenêtre */
+:root {
+    --window-width: 100vw;
+    --window-height: 100vh;
+    --footer-height: 5px;
+    --header-height: 5px;
+    --content-height: calc(var(--window-height) - var(--footer-height) - var(--header-height));
+}
+
+/* Basic reset for the window */
+html,
+body,
+#root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Base layout for the shortcuts window */
+.shortcuts-window-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure scrollable content works properly */
+.content-scrollable {
+    flex: 1;
+    overflow: auto;
+}
+
+/* Main layout containers */
+.shortcuts-window-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.content-scrollable {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    min-height: 0;
+    /* Important pour le bon comportement flexbox */
+    max-height: var(--content-height);
+}
+
+.content-scrollable>div {
+    padding: 1rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    /* Important pour le bon comportement flexbox */
+}
+
+/* Ensure that the bottom gradient stays at the bottom */
+.gradient-bar-fixed {
+    position: relative;
+    width: 100%;
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+/* Styles spécifiques pour les catégories de raccourcis */
+.shortcuts-categories {
+    display: flex;
+    overflow-x: auto;
+    padding: 0.5rem 0;
+    margin-bottom: 1rem;
+    gap: 0.5rem;
+}
+
+/* Styles responsifs pour l'adaptation globale */
+@media (max-width: 768px) {
+    .content-scrollable>div {
+        padding: 0.75rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .content-scrollable>div {
+        padding: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .content-scrollable>div {
+        padding: 0.25rem;
+    }
+}

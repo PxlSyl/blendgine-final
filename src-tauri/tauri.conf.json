@@ -1,0 +1,83 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "build": {
+    "beforeBuildCommand": "cross-env VITE_PLATFORM=tauri NODE_ENV=production vite build",
+    "beforeDevCommand": "cross-env VITE_PLATFORM=tauri vite --port 1420",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "identifier": "com.pxlsyllab.blendgine",
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "",
+        "minWidth": 320,
+        "minHeight": 568,
+        "resizable": true,
+        "maximized": true,
+        "decorations": true,
+        "transparent": false,
+        "hiddenTitle": true,
+        "center": true,
+        "skipTaskbar": false,
+        "acceptFirstMouse": true,
+        "devtools": true,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "dangerousDisableAssetCspModification": false,
+      "csp": "default-src 'self' ipc: tauri: http://ipc.localhost https://x.com https://*.x.com; media-src 'self' asset: file: data: blob: http://asset.localhost/* https://asset.localhost/* http://localhost:* file://*; connect-src 'self' ipc: tauri: http://ipc.localhost http://localhost:* ws://localhost:* data: blob: safe-file: https://x.com https://*.x.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; img-src 'self' data: blob: asset: safe-file: http://localhost:* file: http://asset.localhost/* https://asset.localhost/* file://*; font-src 'self' data: https://fonts.gstatic.com; worker-src 'self' blob:; drag-drop 'self'",
+      "capabilities": ["main-capability"],
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**/*"]
+      }
+    }
+  },
+  "plugins": {
+    "fs": {
+      "requireLiteralLeadingDot": false
+    },
+    "shell": {
+      "open": true
+    },
+    "window": {
+      "all": false,
+      "startDragging": true,
+      "dragAndDrop": true
+    },
+    "protocol": {
+      "asset": true,
+      "assetScope": {
+        "allow": ["**/*"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "resources": [
+      "../dist/*",
+
+      "bin/ffmpeg"
+    ],
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": ["bdg"],
+        "name": "Blendgine Project",
+        "description": "Blendgine Project File",
+        "role": "Editor"
+      }
+    ]
+  }
+}

@@ -1,0 +1,116 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.pnp.cjs
+.pnp.loader.mjs
+.yarn/
+.yarnrc.yml
+
+# testing
+/coverage
+
+# production
+/build
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+
+# dependencies
+node_modules/
+**/node_modules/
+/native/node_modules/
+/.pnp
+.pnp.js
+
+# Rust
+target/
+**/target/
+/native/target/
+**/*.rs.bk
+Cargo.lock
+
+# Native binaries
+*.node
+/native/*.node
+/native/nft-boss-native.*
+
+# testing
+/coverage
+
+# production
+/build
+/dist
+/release
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Build
+/dist/
+/src-tauri/target/
+/src-tauri/dist/
+
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.tauri
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Optional
+/src-tauri/target/
+*.log
+
+# FFmpeg binaries (downloaded by setup scripts)
+src-tauri/bin/ffmpeg*
+src-tauri/bin/ffmpeg.exe
+src-tauri/bin/ffmpeg-linux
+src-tauri/bin/ffmpeg-mac
+
+# FFmpeg temporary files
+ffmpeg.zip
+ffmpeg.tar.xz
+ffmpeg-*/
+
+# Vendor directories (created by cargo vendor)
+webp-animation/
+**/webp-animation/
+
+# linuxdeploy tools (for AppImage packaging)
+/tools/linuxdeploy/
+tools/linuxdeploy/*.AppImage

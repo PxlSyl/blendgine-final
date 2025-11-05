@@ -1,0 +1,111 @@
+{
+  "name": "blendgine",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Blendgine",
+  "author": "PxlSyl",
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@effect/platform": "^0.90.6",
+    "@effect/schema": "^0.75.5",
+    "@react-three/drei": "^10.7.4",
+    "@react-three/fiber": "^9.3.0",
+    "@supabase/supabase-js": "^2.57.0",
+    "@tauri-apps/api": "~2.9",
+    "effect": "^3.17.13",
+    "framer-motion": "^12.23.12",
+    "gifuct-js": "^2.1.2",
+    "react": "^19.1.1",
+    "react-confetti": "^6.4.0",
+    "react-dom": "^19.1.1",
+    "react-table": "^7.8.0",
+    "three": "^0.180.0",
+    "three-stdlib": "^2.36.0",
+    "uuid": "^11.1.0",
+    "xlsx": "^0.18.5",
+    "zustand": "^5.0.8"
+  },
+  "scripts": {
+    "dev:tauri": "cross-env VITE_PLATFORM=tauri tauri dev",
+    "dev:tauri-web": "cross-env VITE_PLATFORM=tauri vite --port 1420",
+    "clean:tauri": "cd src-tauri && cargo clean",
+    "build:tauri-app": "yarn build && cross-env VITE_PLATFORM=tauri NODE_ENV=production vite build",
+    "build:tauri": "yarn build:tauri-app && cross-env VITE_PLATFORM=tauri tauri build",
+    "setup:linuxdeploy": "bash scripts/setup-linuxdeploy.sh",
+    "build:tauri:linux": "bash tools/linuxdeploy/build-with-linuxdeploy.sh",
+    "setup:ffmpeg": "bash scripts/setup-ffmpeg.sh",
+    "setup:ffmpeg:windows": "powershell -ExecutionPolicy Bypass -File scripts/setup-ffmpeg.ps1",
+    "setup:ffmpeg:force": "bash scripts/setup-ffmpeg.sh && powershell -ExecutionPolicy Bypass -File scripts/setup-ffmpeg.ps1 -Force",
+    "clean": "rimraf dist",
+    "lint": "eslint \"frontend/**/*.{js,jsx,ts,tsx}\"",
+    "format": "prettier --write \"frontend/**/*.{ts,tsx}\"",
+    "build": "vite build",
+    "dev": "vite",
+    "tauri": "tauri",
+    "check-dead-code": "ts-prune && yarn eslint . --ext .ts,.tsx",
+    "find-unused": "node scripts/find-unused-exports.js"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@effect/eslint-plugin": "^0.3.2",
+    "@tailwindcss/postcss": "^4.1.13",
+    "@tauri-apps/cli": "~2.9",
+    "@types/node": "^24.10.0",
+    "@types/react": "^19.1.12",
+    "@types/react-dom": "^19.1.9",
+    "@types/react-table": "^7.7.20",
+    "@types/three": "^0.180.0",
+    "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.42.0",
+    "@typescript-eslint/parser": "^8.42.0",
+    "@vitejs/plugin-react": "^5.0.2",
+    "autoprefixer": "^10.4.21",
+    "cross-env": "^10.0.0",
+    "eslint": "^9.34.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.6",
+    "postcss": "^8.5.6",
+    "prettier": "^3.6.2",
+    "prune": "^0.0.2",
+    "rimraf": "^6.0.1",
+    "tailwindcss": "^4.1.13",
+    "ts-pattern": "^5.8.0",
+    "ts-prune": "^0.10.3",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.4",
+    "vite-plugin-checker": "^0.10.3"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "frontend/**/*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "frontend/**/*.{json,css,scss,md}": [
+      "prettier --write"
+    ]
+  },
+  "packageManager": "yarn@4.9.4"
+}

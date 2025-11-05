@@ -1,0 +1,11 @@
+pub mod base_dimensions;
+pub mod config_files;
+pub mod create_directories;
+pub mod error_dialog;
+pub mod extract_frames;
+pub mod frame_count;
+pub mod image_file;
+pub mod layer_directory;
+pub mod notify;
+pub mod process_animated;
+pub mod structs;
