@@ -330,8 +330,6 @@ export const useGenerateStore = create<AppState & AppActions>((set, get) => ({
         throw new Error(result.message);
       }
 
-      await api.setLastCreatedCollection(exportFolder);
-
       setGenerationState((prev) => ({ ...prev, status: 'completed' }));
       setShowDots(false);
       setTimeout(() => {

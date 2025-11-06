@@ -215,20 +215,6 @@ export class TauriApiService implements TauriApi {
     return await invoke<void>('quit');
   }
 
-  async getLastCreatedCollection(): Promise<string> {
-    const result = await invoke<string | null>('get_last_created_collection');
-    return result ?? '';
-  }
-
-  async setLastCreatedCollection(path: string): Promise<void> {
-    try {
-      await invoke('set_last_created_collection', { path });
-    } catch (error) {
-      console.error('Error setting last collection:', error);
-      throw error;
-    }
-  }
-
   async checkFolderExists(path: string): Promise<boolean> {
     return await invoke<boolean>('check_folder_exists', { path });
   }
