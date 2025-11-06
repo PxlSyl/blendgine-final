@@ -209,7 +209,15 @@ async fn count_total_animated_files(
                 for entry in entries.flatten() {
                     if let Some(ext) = entry.path().extension() {
                         let ext_lower = ext.to_string_lossy().to_lowercase();
-                        if ext_lower == "gif" || ext_lower == "webp" || ext_lower == "png" {
+                        if ext_lower == "gif"
+                            || ext_lower == "webp"
+                            || ext_lower == "png"
+                            || ext_lower == "mp4"
+                            || ext_lower == "webm"
+                            || ext_lower == "mov"
+                            || ext_lower == "avi"
+                            || ext_lower == "mkv"
+                        {
                             total_files += 1;
                         }
                     }

@@ -29,7 +29,17 @@ pub async fn process_layer_directory(entry: DirEntry) -> Result<Option<LayerCont
             .and_then(|e| e.to_str())
             .map(|e| e.to_ascii_lowercase());
 
-        if matches!(ext.as_deref(), Some("png") | Some("webp") | Some("gif")) {
+        if matches!(
+            ext.as_deref(),
+            Some("png")
+                | Some("webp")
+                | Some("gif")
+                | Some("mp4")
+                | Some("webm")
+                | Some("mov")
+                | Some("avi")
+                | Some("mkv")
+        ) {
             image_futures.push(process_image_file(subentry.path()));
         }
     }

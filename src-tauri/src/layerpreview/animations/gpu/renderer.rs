@@ -1,6 +1,7 @@
-use bytemuck::{Pod, Zeroable};
+use bytemuck::{cast_slice, Pod, Zeroable};
 use image::DynamicImage;
 use tokio::sync::oneshot;
+use wgpu::util::DeviceExt;
 use wgpu::*;
 
 fn compute_in_flight_limit(frames: &[DynamicImage], adapter: &wgpu::Adapter) -> usize {
@@ -223,22 +224,32 @@ impl GpuSpritesheetRenderer {
             BufferUsages::STORAGE | BufferUsages::COPY_DST,
             "frame_buffer",
         );
-        Self::ensure_buffer(
-            &self.device,
-            &mut self.output_buffer,
-            &mut self.output_bytes,
-            output_bytes,
-            BufferUsages::STORAGE | BufferUsages::COPY_SRC,
-            "output_buffer",
-        );
+
+        if self.output_buffer.is_none() || self.output_bytes < output_bytes {
+            let transparent_pixels: Vec<u32> = vec![0x00000000; output_pixels_count];
+            let new_buf = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("output_buffer"),
+                    contents: cast_slice(&transparent_pixels),
+                    usage: BufferUsages::STORAGE | BufferUsages::COPY_SRC | BufferUsages::COPY_DST,
+                });
+            self.output_buffer = Some(new_buf);
+            self.output_bytes = output_bytes;
+        }
 
         let input_buf = self.input_buffer.as_ref().unwrap();
         let frame_buf = self.frame_buffer.as_ref().unwrap();
         let output_buf = self.output_buffer.as_ref().unwrap();
 
+        let transparent_pixels: Vec<u32> = vec![0x00000000; output_pixels_count];
         self.queue
-            .write_buffer(input_buf, 0, bytemuck::cast_slice(input_u32));
+            .write_buffer(output_buf, 0, cast_slice(&transparent_pixels));
+
+        self.queue.write_buffer(input_buf, 0, cast_slice(input_u32));
         self.queue.write_buffer(frame_buf, 0, frame_data_bytes);
+
+        self.queue.submit(std::iter::empty());
 
         let bind_group = self.create_bind_group(input_buf, frame_buf, output_buf);
 

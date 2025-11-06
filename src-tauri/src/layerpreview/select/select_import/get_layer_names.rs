@@ -40,7 +40,9 @@ pub async fn get_layer_image_names(
         if file_type.is_file() {
             if let Some(ext) = entry.path().extension().and_then(|e| e.to_str()) {
                 let ext_lower = ext.to_ascii_lowercase();
-                if ["png", "webp", "gif"].contains(&ext_lower.as_str()) {
+                if ["png", "webp", "gif", "mp4", "webm", "mov", "avi", "mkv"]
+                    .contains(&ext_lower.as_str())
+                {
                     images.push(entry.file_name().to_string_lossy().to_string());
                 }
             }

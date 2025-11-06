@@ -288,15 +288,53 @@ const LayersviewContent: React.FC<LayersviewContentProps> = ({ layerData }) => {
                 </div>
 
                 {currentImage ? (
-                  <img
-                    src={currentImage.url}
-                    alt={currentImage.name}
-                    className="w-full h-full object-contain rounded-lg"
-                    loading="eager"
-                    style={{
-                      imageRendering: 'pixelated',
-                    }}
-                  />
+                  (() => {
+                    const isVideo = /\.(mp4|webm|mov|avi|mkv)$/i.test(currentImage.name);
+                    if (isVideo) {
+                      const ext = currentImage.name.split('.').pop()?.toLowerCase();
+                      const mimeType =
+                        ext === 'mp4'
+                          ? 'video/mp4'
+                          : ext === 'webm'
+                            ? 'video/webm'
+                            : ext === 'mov'
+                              ? 'video/quicktime'
+                              : ext === 'avi'
+                                ? 'video/x-msvideo'
+                                : ext === 'mkv'
+                                  ? 'video/x-matroska'
+                                  : 'video/mp4';
+
+                      return (
+                        <video
+                          key={currentImage.url}
+                          className="w-full h-full object-contain rounded-lg"
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          style={{
+                            imageRendering: 'pixelated',
+                          }}
+                        >
+                          <source src={currentImage.url} type={mimeType} />
+                          Your browser does not support video playback.
+                        </video>
+                      );
+                    } else {
+                      return (
+                        <img
+                          src={currentImage.url}
+                          alt={currentImage.name}
+                          className="w-full h-full object-contain rounded-lg"
+                          loading="eager"
+                          style={{
+                            imageRendering: 'pixelated',
+                          }}
+                        />
+                      );
+                    }
+                  })()
                 ) : (
                   <div className="flex items-center justify-center w-full h-full text-gray-400 dark:text-gray-600">
                     No image to display

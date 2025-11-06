@@ -66,7 +66,7 @@ export const createImageSlice: StateCreator<ImageSliceState, [], [], ImageSlice>
       let consecutiveFailures = 0;
       const MAX_CONSECUTIVE_FAILURES = 3;
 
-      const traitNameWithoutExt = traitName.replace(/\.(gif|png|webp)$/i, '');
+      const traitNameWithoutExt = traitName.replace(/\.(gif|png|webp|mp4|webm|mov|avi|mkv)$/i, '');
 
       while (
         sheetIndex < spritesheetLayout.totalSheets &&

@@ -160,8 +160,8 @@ pub async fn select_folder(app_handle: tauri::AppHandle) -> Result<Option<String
                         if layers.is_empty() {
                             show_error_dialog(
                                 &app_handle,
-                                "No Valid Images Found",
-                                "Selected folder does not contain any valid layer directories with supported images formats (.png, .webp, .gif)",
+                                "No Valid Media Found",
+                                "Selected folder does not contain any valid layer directories with supported formats (.png, .webp, .gif, .mp4, .webm, .mov, .avi, .mkv)",
                             )
                             .await?;
                             continue;

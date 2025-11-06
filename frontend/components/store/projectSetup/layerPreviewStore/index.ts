@@ -325,34 +325,64 @@ export const useLayerPreviewStore = create<LayerPreviewStore>((set, get) => {
 
         const imageSrc = convertFileSrc(imagePath);
 
+        const isVideo = /\.(mp4|webm|mov|avi|mkv)$/i.test(imageName);
+
         const dimensions = await Effect.runPromise(
           Effect.tryPromise(
             () =>
               new Promise<Dimensions>((resolve, reject) => {
-                const img = new Image();
                 const timeout = setTimeout(() => {
-                  reject(new Error(`Image load timeout for ${layerName}/${imageName}`));
+                  reject(new Error(`Media load timeout for ${layerName}/${imageName}`));
                 }, 10000);
 
-                img.onload = () => {
-                  clearTimeout(timeout);
-                  try {
-                    const result = S.decodeSync(DimensionsSchema)({
-                      width: img.naturalWidth,
-                      height: img.naturalHeight,
-                    }) as Dimensions;
-                    resolve(result);
-                  } catch (error) {
-                    reject(new Error('Invalid image dimensions', { cause: error }));
-                  }
-                };
+                if (isVideo) {
+                  const video = document.createElement('video');
+                  video.preload = 'metadata';
+                  video.muted = true;
 
-                img.onerror = () => {
-                  clearTimeout(timeout);
-                  reject(new Error(`Failed to load image ${layerName}/${imageName}`));
-                };
+                  video.onloadedmetadata = () => {
+                    clearTimeout(timeout);
+                    try {
+                      const result = S.decodeSync(DimensionsSchema)({
+                        width: video.videoWidth,
+                        height: video.videoHeight,
+                      }) as Dimensions;
+                      resolve(result);
+                    } catch (error) {
+                      reject(new Error('Invalid video dimensions', { cause: error }));
+                    }
+                  };
 
-                img.src = imageSrc;
+                  video.onerror = (e) => {
+                    clearTimeout(timeout);
+                    reject(new Error(`Failed to load video ${layerName}/${imageName}: ${e}`));
+                  };
+
+                  video.src = imageSrc;
+                  video.load();
+                } else {
+                  const img = new Image();
+
+                  img.onload = () => {
+                    clearTimeout(timeout);
+                    try {
+                      const result = S.decodeSync(DimensionsSchema)({
+                        width: img.naturalWidth,
+                        height: img.naturalHeight,
+                      }) as Dimensions;
+                      resolve(result);
+                    } catch (error) {
+                      reject(new Error('Invalid image dimensions', { cause: error }));
+                    }
+                  };
+
+                  img.onerror = () => {
+                    clearTimeout(timeout);
+                    reject(new Error(`Failed to load image ${layerName}/${imageName}`));
+                  };
+
+                  img.src = imageSrc;
+                }
               })
           )
         );

@@ -149,7 +149,7 @@ const ProjectSetup: React.FC = () => {
                 <div className="h-full flex items-center justify-center">
                   <div className="hidden sm:flex text-sm italic items-center text-gray-500 dark:text-gray-400">
                     <InfoIcon className="w-5 h-5 mr-2" />
-                    Supported formats: .png, .webp, .gif
+                    Supported formats: .png, .webp, .gif, .mp4, .webm, .mov, .avi, .mkv
                   </div>
                 </div>
               ) : (

@@ -36,6 +36,7 @@ pub async fn check_animated_images(folder_path: String) -> Result<bool, String> 
             match ext.as_deref() {
                 Some("gif") => check_gif_animated(path).unwrap_or(false),
                 Some("webp") => check_webp_animated(path).unwrap_or(false),
+                Some("mp4") | Some("webm") | Some("mov") | Some("avi") | Some("mkv") => true,
                 _ => false,
             }
         });

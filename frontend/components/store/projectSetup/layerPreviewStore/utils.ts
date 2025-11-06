@@ -1,6 +1,5 @@
 import type { BlendProperties, RarityConfig } from '@/types/effect';
 import { DEFAULT_BLEND_PROPERTIES, BlendMode, BLEND_MODES } from '@/types/blendModes';
-import { isSupportedImageFormat } from '@/utils/imageUtils';
 
 import { useLayerOrderStore } from '../../layerOrder/main';
 
@@ -60,7 +59,8 @@ export const getBlendPropertiesForTrait = (
 };
 
 export const isImageFile = (filename: string): boolean => {
-  return isSupportedImageFormat(filename);
+  const extension = filename.split('.').pop()?.toLowerCase();
+  return ['png', 'webp', 'gif', 'mp4', 'webm', 'mov', 'avi', 'mkv'].includes(extension ?? '');
 };
 
 export const fileExistsCache = new Map<string, boolean>();

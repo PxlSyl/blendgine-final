@@ -1,12 +1,17 @@
 use anyhow::Result;
-use std::process::{Command, Stdio};
+use std::{
+    env::current_dir,
+    os::windows::process::CommandExt,
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 
-pub fn get_ffmpeg_bin_dir() -> std::path::PathBuf {
-    let project_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+pub fn get_ffmpeg_bin_dir() -> PathBuf {
+    let project_dir = current_dir().unwrap_or_else(|_| PathBuf::from("."));
     project_dir.join("bin")
 }
 
-pub fn get_ffmpeg_path() -> Result<std::path::PathBuf> {
+pub fn get_ffmpeg_path() -> Result<PathBuf> {
     let app_dir = get_ffmpeg_bin_dir();
 
     let bundled_path = app_dir.join("ffmpeg");
@@ -20,7 +25,6 @@ pub fn get_ffmpeg_path() -> Result<std::path::PathBuf> {
 
         #[cfg(target_os = "windows")]
         {
-            use std::os::windows::process::CommandExt;
             cmd.creation_flags(0x08000000);
         }
 
@@ -29,7 +33,7 @@ pub fn get_ffmpeg_path() -> Result<std::path::PathBuf> {
         if output.status.success() {
             let path_str = String::from_utf8_lossy(&output.stdout);
             let path = path_str.trim();
-            return Ok(std::path::PathBuf::from(path));
+            return Ok(PathBuf::from(path));
         }
     }
 
@@ -40,7 +44,6 @@ pub fn get_ffmpeg_path() -> Result<std::path::PathBuf> {
 
             #[cfg(target_os = "windows")]
             {
-                use std::os::windows::process::CommandExt;
                 cmd.creation_flags(0x08000000);
             }
 
@@ -49,7 +52,7 @@ pub fn get_ffmpeg_path() -> Result<std::path::PathBuf> {
             if output.status.success() {
                 let path_str = String::from_utf8_lossy(&output.stdout);
                 let path = path_str.trim();
-                return Ok(std::path::PathBuf::from(path));
+                return Ok(PathBuf::from(path));
             }
         }
     }

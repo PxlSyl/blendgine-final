@@ -40,6 +40,7 @@ impl FFmpegWrapper {
         let original_fps = self.get_video_fps(video_path)?;
 
         let mut filters = Vec::new();
+
         let scale_filter;
         if let (Some(w), Some(h)) = (width, height) {
             if w > 0 && h > 0 {
@@ -71,19 +72,13 @@ impl FFmpegWrapper {
         let output_pattern = format!("{}/frame_%04d.png", output_dir.display());
 
         let mut args = vec!["-i", video_path.to_str().unwrap()];
+
         if !filter_complex.is_empty() {
             args.push("-vf");
             args.push(&filter_complex);
         }
-        args.extend_from_slice(&[
-            "-frame_pts",
-            "1",
-            "-pix_fmt",
-            "rgba",
-            "-q:v",
-            "1",
-            &output_pattern,
-        ]);
+
+        args.extend_from_slice(&["-pix_fmt", "rgba", "-frame_pts", "1", &output_pattern]);
 
         let mut cmd = Command::new(&self.ffmpeg_path);
         cmd.args(&args);
@@ -100,88 +95,6 @@ impl FFmpegWrapper {
         if !output.status.success() {
             return Err(anyhow::anyhow!(
                 "FFmpeg extraction failed: {}",
-                String::from_utf8_lossy(&output.stderr)
-            ));
-        }
-
-        Ok(original_fps)
-    }
-
-    pub fn extract_single_frame(
-        &self,
-        video_path: &Path,
-        output_dir: &Path,
-        frame_number: Option<u32>,
-        width: Option<u32>,
-        height: Option<u32>,
-    ) -> Result<f32> {
-        std::fs::create_dir_all(output_dir)?;
-
-        let original_fps = self.get_video_fps(video_path)?;
-
-        let mut filters = Vec::new();
-        let scale_filter;
-        if let (Some(w), Some(h)) = (width, height) {
-            if w > 0 && h > 0 {
-                scale_filter = format!("scale={}:{}:flags=lanczos", w, h);
-                filters.push(scale_filter.as_str());
-            }
-        } else if let Some(w) = width {
-            if w > 0 {
-                scale_filter = format!("scale={}:-1:flags=lanczos", w);
-                filters.push(scale_filter.as_str());
-            }
-        } else if let Some(h) = height {
-            if h > 0 {
-                scale_filter = format!("scale=-1:{}:flags=lanczos", h);
-                filters.push(scale_filter.as_str());
-            }
-        }
-
-        let filter_complex = if !filters.is_empty() {
-            filters.join(",")
-        } else {
-            String::new()
-        };
-
-        let output_pattern = format!("{}/frame_0000.png", output_dir.display());
-
-        let mut args = vec!["-i", video_path.to_str().unwrap()];
-
-        let select_filter = if let Some(frame_num) = frame_number {
-            Some(format!("select=eq(n\\,{})", frame_num))
-        } else {
-            None
-        };
-
-        if let Some(filter) = &select_filter {
-            args.extend_from_slice(&["-vf", filter]);
-        } else {
-            args.extend_from_slice(&["-vframes", "1"]);
-        }
-
-        if !filter_complex.is_empty() {
-            args.push("-vf");
-            args.push(&filter_complex);
-        }
-
-        args.extend_from_slice(&["-pix_fmt", "rgba", "-q:v", "1", &output_pattern]);
-
-        let mut cmd = Command::new(&self.ffmpeg_path);
-        cmd.args(&args);
-
-        #[cfg(target_os = "windows")]
-        {
-            use std::os::windows::process::CommandExt;
-            cmd.creation_flags(0x08000000);
-        }
-
-        cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
-
-        let output = cmd.output()?;
-        if !output.status.success() {
-            return Err(anyhow::anyhow!(
-                "FFmpeg single frame extraction failed: {}",
                 String::from_utf8_lossy(&output.stderr)
             ));
         }

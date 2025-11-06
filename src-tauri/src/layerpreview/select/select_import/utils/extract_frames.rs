@@ -7,7 +7,8 @@ use futures::future::join_all;
 use std::{fs::read_dir, path::PathBuf};
 use tracing;
 
-const SUPPORTED_IMAGE_EXTENSIONS: &[&str] = &["gif", "webp", "png"];
+const SUPPORTED_IMAGE_EXTENSIONS: &[&str] =
+    &["gif", "webp", "png", "mp4", "webm", "mov", "avi", "mkv"];
 
 pub async fn extract_animation_frames(
     folder_path: &str,

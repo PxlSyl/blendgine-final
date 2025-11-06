@@ -36,7 +36,9 @@ pub async fn read_traits(folder_path: String, layer_name: String) -> Result<Vec<
 }
 
 fn is_image_file(file_name: &str) -> bool {
-    let extensions = [".png", ".gif", ".webp"];
+    let extensions = [
+        ".png", ".gif", ".webp", ".mp4", ".webm", ".mov", ".avi", ".mkv",
+    ];
     let lower_case = file_name.to_lowercase();
     extensions.iter().any(|&ext| lower_case.ends_with(ext))
 }

@@ -1,11 +1,18 @@
-use std::{collections::VecDeque, path::PathBuf, sync::Arc};
+use std::{
+    collections::VecDeque, fs, path::PathBuf, slice::from_raw_parts, sync::Arc, time::Duration,
+};
 
+use bytemuck::cast_slice;
 use futures::future::join_all;
 use image::{
     codecs::png::{CompressionType, FilterType, PngEncoder},
     ColorType, DynamicImage, ImageEncoder,
 };
-use tokio::{sync::oneshot, task::spawn_blocking};
+use tokio::{
+    sync::oneshot,
+    task::{spawn_blocking, JoinHandle},
+    time::{sleep, timeout},
+};
 use wgpu::*;
 
 use crate::{
@@ -99,9 +106,7 @@ impl FrameProcessor {
             for fd in &frame_data_vec {
                 let fr = &rgba_frames[fd.frame_index as usize];
                 let raw = fr.as_raw();
-                let u32s = unsafe {
-                    std::slice::from_raw_parts(raw.as_ptr() as *const u32, raw.len() / 4)
-                };
+                let u32s = unsafe { from_raw_parts(raw.as_ptr() as *const u32, raw.len() / 4) };
                 input_u32.extend_from_slice(u32s);
             }
 
@@ -117,25 +122,24 @@ impl FrameProcessor {
             renderer: &mut GpuSpritesheetRenderer,
             pending: &mut VecDeque<Pending>,
             failed_tasks: &mut VecDeque<FailedTask>,
-            encode_handles: &mut Vec<tokio::task::JoinHandle<Result<(), String>>>,
+            encode_handles: &mut Vec<JoinHandle<Result<(), String>>>,
         ) -> Result<(), String> {
             if let Some(p) = pending.pop_front() {
                 tracing::debug!("Consuming pending job, remaining: {}", pending.len());
                 renderer.device.poll(Maintain::Wait);
 
-                let map_res =
-                    match tokio::time::timeout(std::time::Duration::from_secs(5), p.recv).await {
-                        Ok(recv_result) => {
-                            recv_result.map_err(|e| format!("map channel closed: {:?}", e))
-                        }
-                        Err(_) => {
-                            tracing::warn!(
-                                "GPU operation timeout for {}, will retry...",
-                                p.path.display()
-                            );
-                            Err("map_async timeout".to_string())
-                        }
-                    };
+                let map_res = match timeout(Duration::from_secs(5), p.recv).await {
+                    Ok(recv_result) => {
+                        recv_result.map_err(|e| format!("map channel closed: {:?}", e))
+                    }
+                    Err(_) => {
+                        tracing::warn!(
+                            "GPU operation timeout for {}, will retry...",
+                            p.path.display()
+                        );
+                        Err("map_async timeout".to_string())
+                    }
+                };
 
                 match map_res {
                     Ok(_) => {
@@ -156,7 +160,7 @@ impl FrameProcessor {
                             encoder
                                 .write_image(&bytes, p.width, p.height, ColorType::Rgba8.into())
                                 .map_err(|e| format!("PNG encode failed: {}", e))?;
-                            std::fs::write(&path, out)
+                            fs::write(&path, out)
                                 .map_err(|e| format!("write {}: {}", path.display(), e))?;
                             Ok(())
                         });
@@ -217,7 +221,7 @@ impl FrameProcessor {
                 continue;
             }
 
-            let frame_bytes: &[u8] = bytemuck::cast_slice(&remapped);
+            let frame_bytes: &[u8] = cast_slice(&remapped);
 
             let out_w = fw * layout.cols;
             let out_h = fh * layout.rows;
@@ -266,7 +270,7 @@ impl FrameProcessor {
         while !failed_tasks.is_empty() {
             tracing::info!("Retrying {} failed tasks...", failed_tasks.len());
 
-            tokio::time::sleep(std::time::Duration::from_millis(2000)).await;
+            sleep(Duration::from_millis(2000)).await;
 
             let mut retry_tasks = Vec::new();
             while let Some(failed) = failed_tasks.pop_front() {
@@ -289,7 +293,7 @@ impl FrameProcessor {
                 );
 
                 if !remapped.is_empty() {
-                    let frame_bytes: &[u8] = bytemuck::cast_slice(&remapped);
+                    let frame_bytes: &[u8] = cast_slice(&remapped);
                     let output_pixels_count = (failed.width * failed.height) as usize;
 
                     let (staging, rx) = renderer.dispatch_and_stage(

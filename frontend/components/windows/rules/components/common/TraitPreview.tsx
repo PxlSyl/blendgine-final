@@ -25,7 +25,7 @@ export const TraitPreview: React.FC<{
     setIsLoading(true);
     setError(null);
 
-    const supportedExtensions = ['png', 'webp', 'gif'];
+    const supportedExtensions = ['png', 'webp', 'gif', 'mp4', 'webm', 'mov', 'avi', 'mkv'];
     const possibleImageNames = supportedExtensions.map((ext) => `${traitName}.${ext}`);
 
     let imagePath: string | null = null;
@@ -51,7 +51,7 @@ export const TraitPreview: React.FC<{
 
     if (!imagePath) {
       console.warn(
-        `TraitPreview: No image found for ${layerName}/${traitName} with any supported extension (png, webp, gif)`
+        `TraitPreview: No image found for ${layerName}/${traitName} with any supported extension`
       );
       setError(`No image found for ${traitName}`);
       setImageData(null);
@@ -76,18 +76,61 @@ export const TraitPreview: React.FC<{
     return () => clearTimeout(checkAndRetry);
   }, [layerName, traitName, projectFolder, retryCount, error, imageData, loadImage]);
 
+  const isVideo = React.useMemo(() => {
+    if (!imageData) {
+      return false;
+    }
+    return /\.(mp4|webm|mov|avi|mkv)$/i.test(imageData);
+  }, [imageData]);
+
+  const getMimeType = (url: string): string => {
+    const ext = url.split('.').pop()?.toLowerCase();
+    switch (ext) {
+      case 'mp4':
+        return 'video/mp4';
+      case 'webm':
+        return 'video/webm';
+      case 'mov':
+        return 'video/quicktime';
+      case 'avi':
+        return 'video/x-msvideo';
+      case 'mkv':
+        return 'video/x-matroska';
+      default:
+        return 'video/mp4';
+    }
+  };
+
   return (
     <div className="relative rounded-sm overflow-hidden bg-gray-200 dark:bg-gray-600 w-24 h-24 flex items-center justify-center trait-preview">
       {imageData ? (
-        <img
-          src={imageData}
-          alt={`${traitName} preview`}
-          className="object-contain w-full h-full p-2"
-          onError={() => {
-            console.error(`TraitPreview: Error displaying image for ${layerName}/${traitName}`);
-            setError(`Error displaying image`);
-          }}
-        />
+        isVideo ? (
+          <video
+            key={imageData}
+            className="object-contain w-full h-full p-2"
+            autoPlay
+            loop
+            muted
+            playsInline
+            onError={() => {
+              console.error(`TraitPreview: Error displaying video for ${layerName}/${traitName}`);
+              setError(`Error displaying video`);
+            }}
+          >
+            <source src={imageData} type={getMimeType(imageData)} />
+            Your browser does not support video playback.
+          </video>
+        ) : (
+          <img
+            src={imageData}
+            alt={`${traitName} preview`}
+            className="object-contain w-full h-full p-2"
+            onError={() => {
+              console.error(`TraitPreview: Error displaying image for ${layerName}/${traitName}`);
+              setError(`Error displaying image`);
+            }}
+          />
+        )
       ) : (
         <div className="animate-pulse w-full h-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center text-xs text-gray-500">
           {isLoading
