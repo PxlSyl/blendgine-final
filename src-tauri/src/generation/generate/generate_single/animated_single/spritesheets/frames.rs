@@ -15,7 +15,7 @@ pub fn extract_and_process_all_frames(
     input_folder: &Path,
     working_folder: Option<&Path>,
     spritesheet_layout: &SpritesheetLayout,
-    blend_properties_cache: &std::collections::HashMap<String, LayerBlendProperties>,
+    blend_properties_cache: &HashMap<String, LayerBlendProperties>,
 ) -> Result<(HashMap<String, Vec<DynamicImage>>, DynamicImage)> {
     let mut layer_frames: HashMap<String, Vec<DynamicImage>> = HashMap::new();
     let mut all_spritesheet_paths = Vec::new();

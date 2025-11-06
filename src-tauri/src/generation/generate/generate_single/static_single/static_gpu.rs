@@ -1,13 +1,17 @@
 use rayon::prelude::*;
 use std::{
+    fs::read,
+    iter::once,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{mpsc::channel, Arc},
+    thread::sleep,
+    time::{Duration, Instant},
 };
 
 use anyhow::Result;
 use dashmap::DashMap;
-use image::RgbaImage;
-use once_cell::sync::Lazy;
+use image::{load_from_memory, load_from_memory_with_format, DynamicImage, ImageFormat, RgbaImage};
+use once_cell::sync::{Lazy, OnceCell};
 
 use crate::effects::core::{
     cpu::resize_cpu::ResizeConfig,
@@ -27,10 +31,8 @@ static RESIZE_TEXTURES: Lazy<DashMap<(u32, u32), Arc<GpuTexture>>> = Lazy::new(|
 
 static STAGING_BUFFERS_CACHE: Lazy<DashMap<u64, Arc<wgpu::Buffer>>> = Lazy::new(|| DashMap::new());
 
-static SHARED_GPU_PIPELINE: once_cell::sync::OnceCell<Arc<StaticGpuPipeline>> =
-    once_cell::sync::OnceCell::new();
-static SHARED_RESIZE_GPU: once_cell::sync::OnceCell<Arc<ResizeGpu>> =
-    once_cell::sync::OnceCell::new();
+static SHARED_GPU_PIPELINE: once_cell::sync::OnceCell<Arc<StaticGpuPipeline>> = OnceCell::new();
+static SHARED_RESIZE_GPU: once_cell::sync::OnceCell<Arc<ResizeGpu>> = OnceCell::new();
 
 pub async fn get_or_init_shared_gpu_pipeline() -> Result<Arc<StaticGpuPipeline>, anyhow::Error> {
     if let Some(pipeline) = SHARED_GPU_PIPELINE.get() {
@@ -86,7 +88,7 @@ pub fn reset_shared_gpu_pipeline() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("✅ [GPU RESET] Caches CPU et pools de buffers nettoyés");
 
     if let Some(device) = shaders::get_global_device() {
-        device.poll(wgpu::Maintain::Poll); // ⚡ Non-bloquant pour le reset
+        device.poll(wgpu::Maintain::Poll);
         tracing::info!("✅ [GPU RESET] Ressources GPU libérées");
     }
 
@@ -201,7 +203,7 @@ impl StaticGpuPipeline {
 
     pub fn texture_to_image_optimized(&self, texture: &GpuTexture) -> Result<RgbaImage> {
         tracing::debug!("🚀 [GPU READBACK OPTIMIZED] Starting ultra-optimized readback");
-        let total_start = std::time::Instant::now();
+        let total_start = Instant::now();
 
         let texture_size = texture.texture().size();
         let buffer_size = (texture_size.width * texture_size.height * 4) as u64;
@@ -251,9 +253,7 @@ impl StaticGpuPipeline {
             texture_size,
         );
 
-        self.gpu_manager
-            .queue()
-            .submit(std::iter::once(encoder.finish()));
+        self.gpu_manager.queue().submit(once(encoder.finish()));
 
         let copy_duration = total_start.elapsed();
         tracing::trace!(
@@ -262,7 +262,7 @@ impl StaticGpuPipeline {
         );
 
         let buffer_slice = staging_buffer.slice(..);
-        let (sender, receiver) = std::sync::mpsc::channel();
+        let (sender, receiver) = channel();
 
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             sender.send(result).unwrap();
@@ -270,7 +270,7 @@ impl StaticGpuPipeline {
 
         let mut poll_count = 0;
         const MAX_POLLS: u32 = 1000;
-        const POLL_INTERVAL: std::time::Duration = std::time::Duration::from_micros(100);
+        const POLL_INTERVAL: Duration = Duration::from_micros(100);
 
         loop {
             self.gpu_manager.device().poll(wgpu::Maintain::Poll);
@@ -294,7 +294,7 @@ impl StaticGpuPipeline {
                 break;
             }
 
-            std::thread::sleep(POLL_INTERVAL);
+            sleep(POLL_INTERVAL);
         }
 
         let map_duration = total_start.elapsed() - copy_duration;
@@ -332,7 +332,7 @@ impl StaticGpuPipeline {
             "🔄 [GPU BATCH] Starting parallel image decoding for {} images",
             layer_paths.len()
         );
-        let decode_start = std::time::Instant::now();
+        let decode_start = Instant::now();
 
         let decoded_images: Result<Vec<(PathBuf, image::DynamicImage)>> = layer_paths
             .par_iter()
@@ -351,10 +351,9 @@ impl StaticGpuPipeline {
         );
 
         tracing::info!("🎮 [GPU BATCH] Starting parallel GPU upload pipeline");
-        let upload_start = std::time::Instant::now();
+        let upload_start = Instant::now();
 
-        // ⚡ OPTIMISATION CRITIQUE: Découper en chunks pour parallélisme optimal
-        const CHUNK_SIZE: usize = 4; // 4 images par thread
+        const CHUNK_SIZE: usize = 4;
         let chunks: Vec<_> = decoded_images.chunks(CHUNK_SIZE).collect();
 
         tracing::info!(
@@ -367,11 +366,11 @@ impl StaticGpuPipeline {
             .par_iter()
             .enumerate()
             .map(|(chunk_idx, chunk)| {
-                let chunk_start = std::time::Instant::now();
+                let chunk_start = Instant::now();
                 let mut chunk_textures = Vec::with_capacity(chunk.len());
 
                 for (path, image) in chunk.iter() {
-                    let texture_start = std::time::Instant::now();
+                    let texture_start = Instant::now();
 
                     let texture = GpuTexture::new(
                         self.gpu_manager.device(),
@@ -446,24 +445,22 @@ impl StaticGpuPipeline {
 }
 
 fn decode_image_from_path(path: &Path) -> Result<image::DynamicImage> {
-    let decode_start = std::time::Instant::now();
+    let decode_start = Instant::now();
 
-    let buffer = std::fs::read(path)
-        .map_err(|e| anyhow::anyhow!("Failed to read file {}: {}", path.display(), e))?;
+    let buffer =
+        read(path).map_err(|e| anyhow::anyhow!("Failed to read file {}: {}", path.display(), e))?;
 
     let io_duration = decode_start.elapsed();
 
     let image = if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
         match ext.to_lowercase().as_str() {
-            "png" => image::load_from_memory_with_format(&buffer, image::ImageFormat::Png)?,
-            "webp" => image::load_from_memory_with_format(&buffer, image::ImageFormat::WebP)?,
-            "jpg" | "jpeg" => {
-                image::load_from_memory_with_format(&buffer, image::ImageFormat::Jpeg)?
-            }
-            _ => image::load_from_memory(&buffer)?,
+            "png" => load_from_memory_with_format(&buffer, image::ImageFormat::Png)?,
+            "webp" => load_from_memory_with_format(&buffer, image::ImageFormat::WebP)?,
+            "jpg" | "jpeg" => load_from_memory_with_format(&buffer, image::ImageFormat::Jpeg)?,
+            _ => load_from_memory(&buffer)?,
         }
     } else {
-        image::load_from_memory(&buffer)?
+        load_from_memory(&buffer)?
     };
 
     let decode_duration = decode_start.elapsed();
@@ -499,7 +496,6 @@ pub async fn process_static_single_gpu(
 ) -> Result<()> {
     let _ = get_or_init_shared_gpu_pipeline().await?;
 
-    // Initialize ResizeGpu ONLY if dimensions are different
     if base_width != final_width || base_height != final_height {
         let _ = get_or_init_shared_resize_gpu().await?;
         tracing::debug!(
@@ -708,7 +704,7 @@ fn process_static_single_gpu_blocking(
             );
             submit_gpu_command_safe(
                 pipeline_arc.gpu_manager.queue(),
-                std::iter::once(copy_encoder.finish()),
+                once(copy_encoder.finish()),
                 "base layer copy",
             );
         }
@@ -739,7 +735,11 @@ fn process_static_single_gpu_blocking(
                     .value()
                     .clone();
 
-                remaining_layers.push((&**layer_texture, blend_properties.mode, blend_properties.opacity));
+                remaining_layers.push((
+                    &**layer_texture,
+                    blend_properties.mode,
+                    blend_properties.opacity,
+                ));
                 tracing::debug!(
                     "🎨 [GPU] Couche '{}' ajoutée au blending en lot",
                     layer_name
@@ -753,7 +753,7 @@ fn process_static_single_gpu_blocking(
 
             if let Some(ref mut base_mutable) = base_texture_mutable {
                 if !remaining_layers.is_empty() {
-                    let start_time = std::time::Instant::now();
+                    let start_time = Instant::now();
 
                     pipeline_arc
                         .blend_processor
@@ -765,7 +765,7 @@ fn process_static_single_gpu_blocking(
                         )
                         .map_err(|e| anyhow::anyhow!("GPU multiple blend failed: {}", e))?;
 
-                    pipeline_arc.gpu_manager.device().poll(wgpu::Maintain::Poll); // ⚡ Non-bloquant
+                    pipeline_arc.gpu_manager.device().poll(wgpu::Maintain::Poll);
 
                     let blend_duration = start_time.elapsed();
                     tracing::info!(
@@ -788,7 +788,6 @@ fn process_static_single_gpu_blocking(
             active_layer_order_arc.len()
         );
 
-        // Only resize if dimensions are different
         let final_texture =
             if *base_width_arc != *final_width_arc || *base_height_arc != *final_height_arc {
                 tracing::info!(
@@ -799,7 +798,6 @@ fn process_static_single_gpu_blocking(
                     *final_height_arc
                 );
 
-                // Initialize ResizeGpu on-demand
                 let resize_gpu = get_shared_resize_gpu().ok_or_else(|| {
                     anyhow::anyhow!("ResizeGpu not initialized. This should not happen.")
                 })?;
@@ -826,17 +824,15 @@ fn process_static_single_gpu_blocking(
                 final_blended_texture
             };
 
-        // ⚠️ DIAGNOSTIC GLOBAL: Mesurer le temps total de traitement d'une image
-        let total_image_start = std::time::Instant::now();
+        let total_image_start = Instant::now();
 
         tracing::debug!("🔄 [GPU READBACK] Starting deferred texture readback");
-        let readback_start = std::time::Instant::now();
+        let readback_start = Instant::now();
 
         let final_image = pipeline_arc.texture_to_image_optimized(&final_texture)?;
 
         let readback_duration = readback_start.elapsed();
 
-        // ⚠️ DIAGNOSTIC CRITIQUE: Alerter si le readback est anormalement lent
         if readback_duration.as_millis() > 1000 {
             tracing::error!(
                 "🚨 [READBACK DIAGNOSTIC] EXTREMELY SLOW READBACK: {:?} - THIS IS ABNORMAL!",
@@ -861,9 +857,8 @@ fn process_static_single_gpu_blocking(
             image_format
         ));
 
-        let save_start = std::time::Instant::now();
+        let save_start = Instant::now();
 
-        // ⚠️ DIAGNOSTIC CRITIQUE: Mesurer chaque étape de sauvegarde
         tracing::info!(
             "💾 [SAVE DIAGNOSTIC] Starting save for {}x{} image to {}",
             final_image.width(),
@@ -874,20 +869,17 @@ fn process_static_single_gpu_blocking(
         let save_result = match image_format.to_lowercase().as_str() {
             "png" => {
                 tracing::debug!("🖼️ [SAVE] Saving as PNG with fast compression...");
-                // ⚡ OPTIMISATION CRITIQUE: Convertir en RGB pour PNG (plus rapide que RGBA)
-                let rgb_image = image::DynamicImage::ImageRgba8(final_image.clone()).to_rgb8();
-                rgb_image.save_with_format(&output_path, image::ImageFormat::Png)
+                let rgb_image = DynamicImage::ImageRgba8(final_image.clone()).to_rgb8();
+                rgb_image.save_with_format(&output_path, ImageFormat::Png)
             }
             "jpg" | "jpeg" => {
                 tracing::debug!("🖼️ [SAVE] Saving as JPEG with optimized quality...");
-                // ⚡ OPTIMISATION: JPEG nécessite RGB (pas RGBA)
-                let rgb_image = image::DynamicImage::ImageRgba8(final_image.clone()).to_rgb8();
-                rgb_image.save_with_format(&output_path, image::ImageFormat::Jpeg)
+                let rgb_image = DynamicImage::ImageRgba8(final_image.clone()).to_rgb8();
+                rgb_image.save_with_format(&output_path, ImageFormat::Jpeg)
             }
             "webp" => {
                 tracing::debug!("🖼️ [SAVE] Saving as WebP with fast preset...");
-                // ⚡ WebP supporte RGBA directement
-                final_image.save_with_format(&output_path, image::ImageFormat::WebP)
+                final_image.save_with_format(&output_path, ImageFormat::WebP)
             }
             _ => {
                 tracing::error!("⚠️ [SAVE] Unsupported image format: {}", image_format);
@@ -900,7 +892,6 @@ fn process_static_single_gpu_blocking(
 
         let save_duration = save_start.elapsed();
 
-        // ⚠️ DIAGNOSTIC: Alerter si la sauvegarde est anormalement lente
         if save_duration.as_millis() > 1000 {
             tracing::error!(
                 "🚨 [SAVE DIAGNOSTIC] EXTREMELY SLOW SAVE: {:?} for {}x{} {} - THIS IS ABNORMAL!",
@@ -944,7 +935,6 @@ fn process_static_single_gpu_blocking(
             }
         }
 
-        // ⚠️ DIAGNOSTIC FINAL: Temps total de traitement
         let total_image_duration = total_image_start.elapsed();
 
         if total_image_duration.as_millis() > 5000 {
