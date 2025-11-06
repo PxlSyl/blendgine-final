@@ -1,27 +1,23 @@
 use anyhow::Result;
 use image::DynamicImage;
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
-use crate::generation::generate::layers::blend::LayerBlendProperties;
 use crate::generation::generate::{
     cache::get_trait_spritesheets_cached,
     generate_single::animated_single::spritesheets::spritesheet_blender::blend_spritesheets_with_individual_properties,
+    layers::blend::LayerBlendProperties,
 };
-use crate::types::SpritesheetLayout;
+use crate::types::{NFTTrait, SpritesheetLayout};
 
 pub fn extract_and_process_all_frames(
     active_layer_order: &[String],
-    traits: &[crate::types::NFTTrait],
+    traits: &[NFTTrait],
     input_folder: &Path,
     working_folder: Option<&Path>,
     spritesheet_layout: &SpritesheetLayout,
     blend_properties_cache: &std::collections::HashMap<String, LayerBlendProperties>,
-) -> Result<(
-    std::collections::HashMap<String, Vec<DynamicImage>>,
-    DynamicImage,
-)> {
-    let mut layer_frames: std::collections::HashMap<String, Vec<DynamicImage>> =
-        std::collections::HashMap::new();
+) -> Result<(HashMap<String, Vec<DynamicImage>>, DynamicImage)> {
+    let mut layer_frames: HashMap<String, Vec<DynamicImage>> = HashMap::new();
     let mut all_spritesheet_paths = Vec::new();
 
     for layer in active_layer_order {

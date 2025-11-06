@@ -4,7 +4,6 @@
     windows_subsystem = "windows"
 )]
 
-// Modules internes
 mod editmetadata;
 mod effects;
 mod ffmpeg_wrapper;
@@ -18,15 +17,11 @@ mod theme;
 mod types;
 mod window_manager;
 
-// Bibliothèques externes
 use tauri::Manager;
+use theme::{get_color_theme, get_theme, init_theme, set_color_theme, set_theme};
 use tracing;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-// Thème
-use theme::{get_color_theme, get_theme, init_theme, set_color_theme, set_theme};
-
-// Gestion des fenêtres
 use window_manager::{
     layer_order_zoom_window::{
         close_layer_order_zoom_window, is_layer_order_zoom_window_open,
@@ -45,13 +40,10 @@ use window_manager::{
     window_manager::*,
 };
 
-// Système de fichiers
 use filesystem::{
-    constants::StorageFiles, folderhash::*, persist::*, rarity::*, rename::*,
-    storage::load_storage, temp_dir::*, utils::*,
+    constants::StorageFiles, folderhash::*, persist::*, rarity::*, rename::*, temp_dir::*, utils::*,
 };
 
-// Prévisualisation des calques
 use layerpreview::{
     select::{
         select_export::select_export_folder,
@@ -69,7 +61,6 @@ use layerpreview::{
     validation::validate::validate_and_reload_layers,
 };
 
-// Génération
 use generation::{
     generate::pausecancel::{
         cancel_nft_generation, get_generation_status, toggle_generation_pause, WINDOW,
@@ -77,14 +68,10 @@ use generation::{
     generation_main::*,
 };
 
-// Autres fonctionnalités
 use editmetadata::editmetadata::*;
 use legendaries::legendaries::*;
-use renderer::{
-    check_gpu_availability, set_current_renderer_preference, update_renderer_preference,
-};
+use renderer::check_gpu_availability;
 use saveload::saveload::*;
-use types::Preferences;
 
 use crate::layerpreview::animations::commands::{
     extract_frames, get_spritesheet_metadata, get_spritesheets_path,
@@ -180,7 +167,6 @@ fn main() {
             load_preferences,
             save_preferences,
             check_gpu_availability,
-            update_renderer_preference,
             save_projectsetup_state,
             load_projectsetup_state,
             load_layer_order_state,
@@ -258,13 +244,6 @@ async fn setup_app(app_handle: tauri::AppHandle) -> anyhow::Result<()> {
         tokio::fs::create_dir_all(&config_dir)
             .await
             .map_err(|e| anyhow::anyhow!("Failed to create config directory: {}", e))?;
-    }
-
-    if let Ok(Some(prefs)) = load_storage::<Preferences>(&storage_files.preferences).await {
-        let renderer = prefs.renderer.unwrap_or_else(|| "gpu".to_string());
-        set_current_renderer_preference(renderer);
-    } else {
-        set_current_renderer_preference("gpu".to_string());
     }
 
     app_handle.manage(storage_files);

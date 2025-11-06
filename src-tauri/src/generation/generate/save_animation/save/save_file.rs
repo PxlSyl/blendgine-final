@@ -2,6 +2,7 @@ use crate::generation::generate::task_manager::spawn_save_task;
 use anyhow::{Context, Result};
 use image::DynamicImage;
 use std::path::Path;
+use tokio::fs::create_dir_all;
 
 use crate::generation::generate::save_animation::save::{
     save_gif::save_gif_animation, save_mp4::save_mp4_animation, save_webm::save_webm_animation,
@@ -12,9 +13,8 @@ pub async fn save_animation(frames: &[DynamicImage], options: &WorkerOptions) ->
     let format = options.format.clone().unwrap_or_else(|| "webp".to_string());
     let output_path = Path::new(&options.output_path);
 
-    // 🆕 Utiliser tokio::fs pour I/O async
     if let Some(parent) = output_path.parent() {
-        tokio::fs::create_dir_all(parent)
+        create_dir_all(parent)
             .await
             .context("Failed to create output directory")?;
     }
@@ -30,7 +30,7 @@ pub async fn save_animation(frames: &[DynamicImage], options: &WorkerOptions) ->
             .unwrap_or_default()
             .to_string_lossy()
     );
-    if let Err(e) = spawn_save_task(task_id.clone(), move || {
+    let handle = spawn_save_task(task_id.clone(), move || {
         let save_result = match format_clone.as_str() {
             "gif" => save_gif_animation(&frames_clone, &output_path_clone, &options_clone),
             "webp" => save_webp_animation(&frames_clone, &output_path_clone, &options_clone),
@@ -54,10 +54,11 @@ pub async fn save_animation(frames: &[DynamicImage], options: &WorkerOptions) ->
         }
     })
     .await
-    {
-        tracing::error!("❌ [SAVE] Failed to spawn save task: {}", e);
-        return Err(anyhow::anyhow!("Failed to spawn save task: {}", e));
-    }
+    .map_err(|e| anyhow::anyhow!("Failed to spawn save task: {}", e))?;
+
+    handle
+        .await
+        .map_err(|e| anyhow::anyhow!("Save task join error: {}", e))??;
 
     Ok(())
 }

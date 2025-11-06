@@ -22,17 +22,15 @@ export const useStore = create<mainStoreState & mainStoreActions>((set) => ({
   showExtraButtons: false,
   showTooltips: true,
   sidebarFull: true,
-  renderer: 'gpu',
 
   setDarkMode: async (darkMode: boolean) => {
     const effect = Effect.gen(function* (_) {
-      const { showTooltips, renderer, themeName } = useStore.getState();
+      const { showTooltips, themeName } = useStore.getState();
       yield* _(
         Effect.tryPromise(() =>
           api.savePreferences({
             dark_mode: darkMode,
             showTooltips,
-            renderer,
             theme_name: themeName,
           })
         )
@@ -64,14 +62,13 @@ export const useStore = create<mainStoreState & mainStoreActions>((set) => ({
     const currentDarkMode = useStore.getState().darkMode;
 
     const effect = Effect.gen(function* (_) {
-      const { showTooltips, renderer } = useStore.getState();
+      const { showTooltips } = useStore.getState();
 
       yield* _(
         Effect.tryPromise(() =>
           api.savePreferences({
             dark_mode: currentDarkMode,
             showTooltips,
-            renderer,
             theme_name: themeName,
           })
         )
@@ -106,13 +103,12 @@ export const useStore = create<mainStoreState & mainStoreActions>((set) => ({
 
   setShowTooltips: async (showTooltips: boolean) => {
     const effect = Effect.gen(function* (_) {
-      const { darkMode, renderer, themeName } = useStore.getState();
+      const { darkMode, themeName } = useStore.getState();
       yield* _(
         Effect.tryPromise(() =>
           api.savePreferences({
             dark_mode: darkMode,
             showTooltips,
-            renderer,
             theme_name: themeName,
           })
         )
@@ -125,72 +121,6 @@ export const useStore = create<mainStoreState & mainStoreActions>((set) => ({
         effect,
         Effect.catchAll((error) => {
           console.error('Failed to set tooltips preference:', error);
-          return Effect.succeed(undefined);
-        })
-      )
-    );
-  },
-
-  setRenderer: async (renderer: 'cpu' | 'gpu') => {
-    const effect = Effect.gen(function* (_) {
-      const { darkMode, showTooltips, themeName } = useStore.getState();
-      yield* _(
-        Effect.tryPromise(() =>
-          api.savePreferences({
-            dark_mode: darkMode,
-            showTooltips,
-            renderer,
-            theme_name: themeName,
-          })
-        )
-      );
-      yield* _(Effect.tryPromise(() => api.updateRendererPreference(renderer)));
-      set({ renderer });
-    });
-
-    await Effect.runPromise(
-      pipe(
-        effect,
-        Effect.catchAll((error) => {
-          console.error('Failed to set renderer preference:', error);
-          return Effect.succeed(undefined);
-        })
-      )
-    );
-  },
-
-  checkAndSetOptimalRenderer: async () => {
-    const effect = Effect.gen(function* (_) {
-      const { renderer } = useStore.getState();
-
-      if (renderer === 'cpu') {
-        return;
-      }
-
-      const gpuCheck = yield* _(Effect.tryPromise(() => api.checkGpuAvailability()));
-
-      if (!gpuCheck.available) {
-        console.warn('GPU not available, falling back to CPU:', gpuCheck.error);
-        const { darkMode, showTooltips, themeName } = useStore.getState();
-        yield* _(
-          Effect.tryPromise(() =>
-            api.savePreferences({
-              dark_mode: darkMode,
-              showTooltips,
-              renderer: 'cpu',
-              theme_name: themeName,
-            })
-          )
-        );
-        set({ renderer: 'cpu' });
-      }
-    });
-
-    await Effect.runPromise(
-      pipe(
-        effect,
-        Effect.catchAll((error) => {
-          console.error('Failed to check optimal renderer:', error);
           return Effect.succeed(undefined);
         })
       )
@@ -213,16 +143,7 @@ export const useStore = create<mainStoreState & mainStoreActions>((set) => ({
         darkMode: prefs.dark_mode,
         themeName,
         showTooltips: prefs.showTooltips ?? true,
-        renderer: prefs.renderer === 'cpu' ? 'cpu' : 'gpu',
       });
-
-      yield* _(
-        Effect.tryPromise(() =>
-          api.updateRendererPreference(prefs.renderer === 'cpu' ? 'cpu' : 'gpu')
-        )
-      );
-
-      yield* _(Effect.tryPromise(() => useStore.getState().checkAndSetOptimalRenderer()));
     });
 
     await Effect.runPromise(
@@ -234,7 +155,7 @@ export const useStore = create<mainStoreState & mainStoreActions>((set) => ({
             const prefersDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
             document.documentElement.classList.toggle('dark', prefersDarkMode);
             document.documentElement.setAttribute('data-theme', 'thelab');
-            set({ darkMode: prefersDarkMode, themeName: 'thelab', renderer: 'gpu' });
+            set({ darkMode: prefersDarkMode, themeName: 'thelab' });
             yield* _(Effect.tryPromise(() => api.setColorTheme('thelab')));
             yield* _(Effect.succeed(undefined));
           });

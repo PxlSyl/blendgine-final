@@ -1,4 +1,8 @@
-use crate::effects::core::{gpu::shaders, gpu::GpuImage};
+use crate::effects::core::{
+    cpu::resize_cpu::{ResizeAlgorithm, ResizeConfig, ResizeFilter},
+    gpu::{common::GpuTexture, shaders, GpuImage},
+};
+use image::DynamicImage;
 use std::error::Error;
 use wgpu::{Device, Queue};
 
@@ -26,6 +30,98 @@ impl Drop for ResizeGpu {
 }
 
 impl ResizeGpu {
+    pub fn map_resize_algorithm(config: &Option<ResizeConfig>) -> u32 {
+        if let Some(config) = config {
+            match config.algorithm {
+                ResizeAlgorithm::Nearest => 0,
+                ResizeAlgorithm::Convolution => 1,
+                ResizeAlgorithm::Interpolation => 1,
+                ResizeAlgorithm::SuperSampling => 3,
+            }
+        } else {
+            1
+        }
+    }
+
+    pub fn map_resize_filter(config: &Option<ResizeConfig>) -> u32 {
+        if let Some(config) = config {
+            if let Some(filter) = &config.filter {
+                match filter {
+                    ResizeFilter::Nearest => 0,
+                    ResizeFilter::Bilinear => 1,
+                    ResizeFilter::Bicubic => 2,
+                    ResizeFilter::Lanczos => 3,
+                    ResizeFilter::Hamming => 4,
+                    ResizeFilter::Mitchell => 5,
+                    ResizeFilter::Gaussian => 6,
+                }
+            } else {
+                3
+            }
+        } else {
+            3
+        }
+    }
+
+    pub fn map_super_sampling_factor(config: &Option<ResizeConfig>) -> u32 {
+        if let Some(config) = config {
+            config.super_sampling_factor.unwrap_or(2) as u32
+        } else {
+            2
+        }
+    }
+
+    pub fn resize_images(
+        &self,
+        device: &Device,
+        queue: &Queue,
+        frames: &[DynamicImage],
+        width: u32,
+        height: u32,
+        resize_config: &Option<ResizeConfig>,
+    ) -> Result<Vec<DynamicImage>, Box<dyn Error>> {
+        if width == 0 || height == 0 {
+            return Err(format!("Invalid dimensions: {}x{}", width, height).into());
+        }
+
+        if frames.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let algorithm = Self::map_resize_algorithm(resize_config);
+        let filter_type = Self::map_resize_filter(resize_config);
+        let super_sampling_factor = Self::map_super_sampling_factor(resize_config);
+
+        let mut results = Vec::with_capacity(frames.len());
+
+        for frame in frames {
+            let input_texture = GpuTexture::from_image(device, queue, frame)?;
+            let output_texture = GpuTexture::new(device, width, height, input_texture.format());
+
+            let input_gpu_image = GpuImage::new(
+                input_texture.texture(),
+                input_texture.texture().size().width,
+                input_texture.texture().size().height,
+            );
+            let output_gpu_image = GpuImage::new(output_texture.texture(), width, height);
+
+            self.apply_resize(
+                device,
+                queue,
+                &input_gpu_image,
+                &output_gpu_image,
+                algorithm,
+                filter_type,
+                super_sampling_factor,
+            )?;
+
+            let result_dynamic = output_texture.to_image(device, queue)?;
+            results.push(result_dynamic);
+        }
+
+        Ok(results)
+    }
+
     pub fn new(device: &Device, _queue: &Queue) -> Result<Self, Box<dyn Error>> {
         let shader = shaders::load_shader(device, "resize");
 

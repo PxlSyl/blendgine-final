@@ -24,37 +24,8 @@ impl LayerBlendProperties {
                 opacity: 1.0,
             });
 
-        let converter_blend_mode = match blend_properties.mode {
-            BlendMode::SourceOver => BlendMode::SourceOver,
-            BlendMode::SourceIn => BlendMode::SourceIn,
-            BlendMode::SourceOut => BlendMode::SourceOut,
-            BlendMode::SourceAtop => BlendMode::SourceAtop,
-            BlendMode::DestinationOver => BlendMode::DestinationOver,
-            BlendMode::DestinationIn => BlendMode::DestinationIn,
-            BlendMode::DestinationOut => BlendMode::DestinationOut,
-            BlendMode::DestinationAtop => BlendMode::DestinationAtop,
-            BlendMode::Multiply => BlendMode::Multiply,
-            BlendMode::Screen => BlendMode::Screen,
-            BlendMode::Overlay => BlendMode::Overlay,
-            BlendMode::Darken => BlendMode::Darken,
-            BlendMode::Lighten => BlendMode::Lighten,
-            BlendMode::ColorDodge => BlendMode::ColorDodge,
-            BlendMode::ColorBurn => BlendMode::ColorBurn,
-            BlendMode::HardLight => BlendMode::HardLight,
-            BlendMode::SoftLight => BlendMode::SoftLight,
-            BlendMode::Difference => BlendMode::Difference,
-            BlendMode::Exclusion => BlendMode::Exclusion,
-            BlendMode::Hue => BlendMode::Hue,
-            BlendMode::Saturation => BlendMode::Saturation,
-            BlendMode::Color => BlendMode::Color,
-            BlendMode::Luminosity => BlendMode::Luminosity,
-            BlendMode::Lighter => BlendMode::Lighter,
-            BlendMode::Copy => BlendMode::Copy,
-            BlendMode::Xor => BlendMode::Xor,
-        };
-
         LayerBlendProperties {
-            mode: converter_blend_mode,
+            mode: blend_properties.mode,
             opacity: blend_properties.opacity,
         }
     }

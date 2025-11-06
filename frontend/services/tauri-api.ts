@@ -602,14 +602,6 @@ export class TauriApiService implements TauriApi {
     }
   }
 
-  async updateRendererPreference(preference: string): Promise<void> {
-    try {
-      await invoke('update_renderer_preference', { preference });
-    } catch (err) {
-      console.error('Failed to update renderer preference:', err);
-    }
-  }
-
   async getRarityData(
     layerName: string,
     traitName: string,

@@ -13,7 +13,6 @@ use tracing;
 use webp_animation::Decoder;
 
 use super::{file_watcher::start_animation_file_watcher, utils::update_global_max_frames};
-use crate::renderer::get_current_renderer_preference;
 use crate::types::SpritesheetLayout;
 
 pub type Result<T, E = String> = std::result::Result<T, E>;
@@ -315,36 +314,9 @@ impl FrameProcessor {
             frame_indices.len()
         );
 
-        let renderer_preference = get_current_renderer_preference();
-
-        match renderer_preference.as_str() {
-            "gpu" => {
-                tracing::info!("Using GPU renderer for spritesheet creation");
-                match self
-                    .create_spritesheets_gpu(&frames, frame_indices.as_slice(), final_frame_count)
-                    .await
-                {
-                    Ok(()) => {}
-                    Err(e) => {
-                        tracing::warn!(
-                            "GPU spritesheet creation failed, falling back to CPU: {}",
-                            e
-                        );
-                        self.create_spritesheets_cpu(
-                            &frames,
-                            frame_indices.as_slice(),
-                            final_frame_count,
-                        )
-                        .await?
-                    }
-                }
-            }
-            _ => {
-                tracing::info!("Using CPU renderer for spritesheet creation");
-                self.create_spritesheets_cpu(&frames, frame_indices.as_slice(), final_frame_count)
-                    .await?
-            }
-        }
+        tracing::info!("Using GPU renderer for spritesheet creation");
+        self.create_spritesheets_gpu(&frames, frame_indices.as_slice(), final_frame_count)
+            .await?;
 
         let mut entries = tokio::fs::read_dir(&self.trait_spritesheet_dir)
             .await

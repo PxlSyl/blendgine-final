@@ -142,31 +142,18 @@ pub fn process_images_with_blend<T: BlendProcessor + ?Sized>(
 pub fn get_blend_implementation(blend_mode: BlendMode) -> Box<dyn BlendProcessor + 'static> {
     match blend_mode {
         BlendMode::SourceOver => Box::new(super::source_over::SourceOverBlend::new()),
+        BlendMode::Lighter => Box::new(super::lighter::LighterBlend::new()),
         BlendMode::Multiply => Box::new(super::multiply::MultiplyBlend::new()),
         BlendMode::Screen => Box::new(super::screen::ScreenBlend::new()),
         BlendMode::Overlay => Box::new(super::overlay::OverlayBlend::new()),
         BlendMode::Darken => Box::new(super::darken::DarkenBlend::new()),
         BlendMode::Lighten => Box::new(super::lighten::LightenBlend::new()),
+        BlendMode::ColorDodge => Box::new(super::color_dodge::ColorDodgeBlend::new()),
+        BlendMode::ColorBurn => Box::new(super::color_burn::ColorBurnBlend::new()),
         BlendMode::HardLight => Box::new(super::hard_light::HardLightBlend::new()),
         BlendMode::SoftLight => Box::new(super::soft_light::SoftLightBlend::new()),
         BlendMode::Difference => Box::new(super::difference::DifferenceBlend::new()),
         BlendMode::Exclusion => Box::new(super::exclusion::ExclusionBlend::new()),
-        BlendMode::ColorDodge => Box::new(super::color_dodge::ColorDodgeBlend::new()),
-        BlendMode::ColorBurn => Box::new(super::color_burn::ColorBurnBlend::new()),
-        BlendMode::Xor => Box::new(super::xor::XorBlend::new()),
-        BlendMode::SourceIn => Box::new(super::source_in::SourceInBlend::new()),
-        BlendMode::SourceOut => Box::new(super::source_out::SourceOutBlend::new()),
-        BlendMode::SourceAtop => Box::new(super::source_atop::SourceAtopBlend::new()),
-        BlendMode::DestinationOver => {
-            Box::new(super::destination_over::DestinationOverBlend::new())
-        }
-        BlendMode::DestinationIn => Box::new(super::destination_in::DestinationInBlend::new()),
-        BlendMode::DestinationOut => Box::new(super::destination_out::DestinationOutBlend::new()),
-        BlendMode::DestinationAtop => {
-            Box::new(super::destination_atop::DestinationAtopBlend::new())
-        }
-        BlendMode::Lighter => Box::new(super::lighter::LighterBlend::new()),
-        BlendMode::Copy => Box::new(super::copy::CopyBlend::new()),
         BlendMode::Hue => Box::new(super::hue::HueBlend::new()),
         BlendMode::Saturation => Box::new(super::saturation::SaturationBlend::new()),
         BlendMode::Color => Box::new(super::color::ColorBlend::new()),

@@ -2,6 +2,7 @@ use anyhow::Result;
 use std::{collections::HashMap, path::Path};
 
 use crate::effects::core::cpu::resize_cpu::ResizeConfig;
+use crate::effects::core::gpu::blend_modes_gpu::GpuBlendContext;
 use crate::generation::generate::{
     generate_single::animated_single::spritesheets::{
         frames::extract_and_process_all_frames, handle_spritesheets,
@@ -38,6 +39,12 @@ pub async fn process_animated_collection(
 ) -> Result<()> {
     if total_frames == 0 {
         return Ok(());
+    }
+
+    if GpuBlendContext::get_global().is_none() {
+        return Err(anyhow::anyhow!(
+            "GPU blend context not initialized for animated collection. GPU is required."
+        ));
     }
 
     let mut blend_properties_cache: HashMap<String, LayerBlendProperties> =

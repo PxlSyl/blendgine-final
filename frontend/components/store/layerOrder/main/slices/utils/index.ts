@@ -1,6 +1,6 @@
 import { emit } from '@tauri-apps/api/event';
 
-import { DEFAULT_BLEND_PROPERTIES } from '@/types/blendModes';
+import { DEFAULT_BLEND_PROPERTIES, type BlendMode } from '@/types/blendModes';
 import type { SetInfo, TraitConfig, RarityConfig } from '@/types/effect';
 import type { LayerConfig } from '@/schemas/effect/layerOrder';
 
@@ -16,66 +16,12 @@ const createSafeBlendObject = (defaultBlend?: unknown) => {
     typeof defaultBlend.opacity === 'number'
   ) {
     return {
-      mode: defaultBlend.mode as
-        | 'source-over'
-        | 'source-in'
-        | 'source-out'
-        | 'source-atop'
-        | 'destination-over'
-        | 'destination-in'
-        | 'destination-out'
-        | 'destination-atop'
-        | 'lighter'
-        | 'copy'
-        | 'xor'
-        | 'multiply'
-        | 'screen'
-        | 'overlay'
-        | 'darken'
-        | 'lighten'
-        | 'color-dodge'
-        | 'color-burn'
-        | 'hard-light'
-        | 'soft-light'
-        | 'difference'
-        | 'exclusion'
-        | 'hue'
-        | 'saturation'
-        | 'color'
-        | 'luminosity'
-        | 'vaporwave',
+      mode: defaultBlend.mode as BlendMode,
       opacity: defaultBlend.opacity,
     };
   }
   return {
-    mode: DEFAULT_BLEND_PROPERTIES.mode as
-      | 'source-over'
-      | 'source-in'
-      | 'source-out'
-      | 'source-atop'
-      | 'destination-over'
-      | 'destination-in'
-      | 'destination-out'
-      | 'destination-atop'
-      | 'lighter'
-      | 'copy'
-      | 'xor'
-      | 'multiply'
-      | 'screen'
-      | 'overlay'
-      | 'darken'
-      | 'lighten'
-      | 'color-dodge'
-      | 'color-burn'
-      | 'hard-light'
-      | 'soft-light'
-      | 'difference'
-      | 'exclusion'
-      | 'hue'
-      | 'saturation'
-      | 'color'
-      | 'luminosity'
-      | 'vaporwave',
+    mode: DEFAULT_BLEND_PROPERTIES.mode,
     opacity: DEFAULT_BLEND_PROPERTIES.opacity,
   };
 };
@@ -467,16 +413,19 @@ export const addLayerToRarityConfig = (
       traits: undefined,
       defaultBlend: DEFAULT_BLEND_PROPERTIES,
     };
-  } else if (!updatedRarityConfig[layer].sets) {
-    updatedRarityConfig[layer].sets = {
-      [setId]: {
+  } else {
+    const layerConfig = updatedRarityConfig[layer];
+    if (!layerConfig.sets) {
+      layerConfig.sets = {
+        [setId]: {
+          active: true,
+        },
+      };
+    } else if (!layerConfig.sets[setId]) {
+      layerConfig.sets[setId] = {
         active: true,
-      },
-    };
-  } else if (!updatedRarityConfig[layer].sets[setId]) {
-    updatedRarityConfig[layer].sets[setId] = {
-      active: true,
-    };
+      };
+    }
   }
 
   return updatedRarityConfig;

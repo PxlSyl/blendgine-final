@@ -1,14 +1,27 @@
 use super::{common::GpuTexture, shaders, GpuEffectManager};
 use crate::types::BlendMode;
+use bytemuck::cast_slice;
 use dashmap::DashMap;
+use image::{DynamicImage, GenericImageView};
 use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 use rayon::prelude::*;
-use std::{error::Error, iter, sync::Arc, time::Instant};
+use std::{
+    collections::{HashMap, HashSet},
+    error::Error,
+    iter,
+    sync::Arc,
+    time::Instant,
+};
 use wgpu::{BindGroupLayout, ComputePipeline, Device, Queue};
-
 static PIPELINE_CACHE: Lazy<DashMap<BlendMode, Arc<ComputePipeline>>> =
     Lazy::new(|| DashMap::new());
 static VIEW_CACHE: Lazy<DashMap<u64, Arc<wgpu::TextureView>>> = Lazy::new(|| DashMap::new());
+
+static TEMP_TEXTURE_POOL: Lazy<DashMap<(u32, u32), Vec<GpuTexture>>> = Lazy::new(|| DashMap::new());
+
+static GLOBAL_GPU_BLEND_CONTEXT: Lazy<Mutex<Option<Arc<GpuBlendContext>>>> =
+    Lazy::new(|| Mutex::new(None));
 
 fn get_texture_key(texture: &wgpu::Texture) -> u64 {
     std::ptr::addr_of!(*texture) as u64
@@ -29,6 +42,52 @@ fn get_or_create_view(texture: &wgpu::Texture) -> Arc<wgpu::TextureView> {
 pub fn clear_blend_caches() {
     PIPELINE_CACHE.clear();
     VIEW_CACHE.clear();
+    cleanup_temp_texture_pool();
+}
+
+fn get_or_create_temp_texture(device: &Device, width: u32, height: u32) -> GpuTexture {
+    let key = (width, height);
+
+    if let Some(mut textures) = TEMP_TEXTURE_POOL.get_mut(&key) {
+        if let Some(texture) = textures.pop() {
+            return texture;
+        }
+    }
+
+    GpuTexture::new(device, width, height, wgpu::TextureFormat::Rgba8Unorm)
+}
+
+fn return_temp_texture_to_pool(texture: GpuTexture) {
+    let key = (
+        texture.texture().size().width,
+        texture.texture().size().height,
+    );
+
+    TEMP_TEXTURE_POOL
+        .entry(key)
+        .or_insert_with(Vec::new)
+        .push(texture);
+}
+
+fn cleanup_temp_texture_pool() {
+    let mut keys_to_remove = Vec::new();
+
+    for entry in TEMP_TEXTURE_POOL.iter() {
+        keys_to_remove.push(entry.key().clone());
+    }
+
+    for key in keys_to_remove {
+        if let Some((_, textures)) = TEMP_TEXTURE_POOL.remove(&key) {
+            for texture in textures {
+                texture.texture().destroy();
+                tracing::debug!(
+                    "🗑️ [GPU POOL] Texture temporaire {}x{} détruite",
+                    texture.texture().size().width,
+                    texture.texture().size().height
+                );
+            }
+        }
+    }
 }
 
 pub struct GpuBlendContext {
@@ -42,10 +101,52 @@ impl Drop for GpuBlendContext {
 
 impl GpuBlendContext {
     pub async fn new() -> Result<Self, Box<dyn Error>> {
-        let manager = GpuEffectManager::new().await?;
+        let device =
+            shaders::get_global_device().ok_or_else(|| "Global GPU device not initialized")?;
+        let queue =
+            shaders::get_global_queue().ok_or_else(|| "Global GPU queue not initialized")?;
+
+        let manager = GpuEffectManager::from_existing(device, queue);
         let processor = Arc::new(GpuBlendProcessor::new().await?);
 
         Ok(Self { manager, processor })
+    }
+
+    pub async fn initialize_global() -> Option<Arc<Self>> {
+        {
+            let ctx = GLOBAL_GPU_BLEND_CONTEXT.lock();
+            if let Some(ref existing) = *ctx {
+                return Some(existing.clone());
+            }
+        }
+
+        match Self::new().await {
+            Ok(ctx) => {
+                let arc_ctx = Arc::new(ctx);
+                let mut global_ctx = GLOBAL_GPU_BLEND_CONTEXT.lock();
+                *global_ctx = Some(arc_ctx.clone());
+                tracing::info!("✅ [GPU BLEND] Global context initialized");
+                Some(arc_ctx)
+            }
+            Err(e) => {
+                tracing::error!("Failed to create GPU blend context: {}", e);
+                None
+            }
+        }
+    }
+
+    pub fn get_global() -> Option<Arc<Self>> {
+        GLOBAL_GPU_BLEND_CONTEXT.lock().clone()
+    }
+
+    pub fn clear_global() {
+        cleanup_temp_texture_pool();
+
+        let mut global_ctx = GLOBAL_GPU_BLEND_CONTEXT.lock();
+        if let Some(ctx) = global_ctx.take() {
+            drop(ctx);
+        }
+        tracing::info!("✅ [GPU BLEND] Global context cleared");
     }
 }
 
@@ -65,19 +166,62 @@ impl GpuBlendProcessor {
         Ok(Self { bind_group_layout })
     }
 
+    pub fn blend_images(
+        &self,
+        device: &Device,
+        queue: &Queue,
+        base_image: &DynamicImage,
+        overlay_image: &DynamicImage,
+        blend_mode: BlendMode,
+        opacity: f32,
+    ) -> Result<DynamicImage, Box<dyn Error>> {
+        let (width, height) = base_image.dimensions();
+
+        if overlay_image.dimensions() != (width, height) {
+            return Err(format!(
+                "Image dimensions mismatch: base {}x{}, overlay {}x{}",
+                width,
+                height,
+                overlay_image.width(),
+                overlay_image.height()
+            )
+            .into());
+        }
+
+        let base_rgba = base_image.to_rgba8();
+        let overlay_rgba = overlay_image.to_rgba8();
+
+        let base_dynamic = DynamicImage::ImageRgba8(base_rgba);
+        let overlay_dynamic = DynamicImage::ImageRgba8(overlay_rgba);
+
+        let base_texture = GpuTexture::from_image(device, queue, &base_dynamic)?;
+        let overlay_texture = GpuTexture::from_image(device, queue, &overlay_dynamic)?;
+        let mut output_texture = get_or_create_temp_texture(device, width, height);
+
+        self.apply_blend(
+            device,
+            queue,
+            &base_texture,
+            &overlay_texture,
+            &mut output_texture,
+            blend_mode,
+            opacity,
+        )?;
+
+        let result = output_texture.to_image(device, queue)?;
+
+        return_temp_texture_to_pool(output_texture);
+        base_texture.texture().destroy();
+        overlay_texture.texture().destroy();
+        device.poll(wgpu::Maintain::Poll);
+
+        Ok(result)
+    }
+
     fn get_shader_name(blend_mode: BlendMode) -> &'static str {
         match blend_mode {
             BlendMode::SourceOver => "blend_modes/source_over",
-            BlendMode::SourceIn => "blend_modes/source_in",
-            BlendMode::SourceOut => "blend_modes/source_out",
-            BlendMode::SourceAtop => "blend_modes/source_atop",
-            BlendMode::DestinationOver => "blend_modes/destination_over",
-            BlendMode::DestinationIn => "blend_modes/destination_in",
-            BlendMode::DestinationOut => "blend_modes/destination_out",
-            BlendMode::DestinationAtop => "blend_modes/destination_atop",
             BlendMode::Lighter => "blend_modes/lighter",
-            BlendMode::Copy => "blend_modes/copy",
-            BlendMode::Xor => "blend_modes/xor",
             BlendMode::Multiply => "blend_modes/multiply",
             BlendMode::Screen => "blend_modes/screen",
             BlendMode::Overlay => "blend_modes/overlay",
@@ -136,6 +280,7 @@ impl GpuBlendProcessor {
         layer_texture: &GpuTexture,
         output_texture: &mut GpuTexture,
         blend_mode: BlendMode,
+        opacity: f32,
     ) -> Result<(), BlendGpuError> {
         let pipeline = self.get_or_create_pipeline(device, blend_mode)?;
 
@@ -148,6 +293,16 @@ impl GpuBlendProcessor {
         let output_view = output_texture
             .texture()
             .create_view(&wgpu::TextureViewDescriptor::default());
+
+        let opacity_data = [opacity as f32];
+        let opacity_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("Blend Opacity Uniform"),
+            size: 16,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+
+        queue.write_buffer(&opacity_buffer, 0, bytemuck::cast_slice(&opacity_data));
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Blend Bind Group"),
@@ -164,6 +319,10 @@ impl GpuBlendProcessor {
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: wgpu::BindingResource::TextureView(&output_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: opacity_buffer.as_entire_binding(),
                 },
             ],
         });
@@ -193,7 +352,7 @@ impl GpuBlendProcessor {
         &self,
         device: &Device,
         base_texture: &mut GpuTexture,
-        layers: &[(&GpuTexture, BlendMode)],
+        layers: &[(&GpuTexture, BlendMode, f32)],
         queue: &Queue,
     ) -> Result<(), String> {
         let start_time = Instant::now();
@@ -224,9 +383,8 @@ impl GpuBlendProcessor {
         let pipeline_start = Instant::now();
         let workgroup_size = 8u32;
 
-        let unique_blend_modes: std::collections::HashSet<_> =
-            layers.iter().map(|(_, mode)| *mode).collect();
-        let pipeline_cache: std::collections::HashMap<_, _> = unique_blend_modes
+        let unique_blend_modes: HashSet<_> = layers.iter().map(|(_, mode, _)| *mode).collect();
+        let pipeline_cache: HashMap<_, _> = unique_blend_modes
             .into_iter()
             .map(|mode| {
                 let pipeline = self.get_or_create_pipeline(device, mode)?;
@@ -241,9 +399,18 @@ impl GpuBlendProcessor {
         let ops: Vec<_> = layers
             .iter()
             .enumerate()
-            .map(|(i, (layer_texture, blend_mode))| {
+            .map(|(i, (layer_texture, blend_mode, opacity))| {
                 let pipeline = pipeline_cache.get(blend_mode).unwrap().clone();
                 let is_last = i == layers.len() - 1;
+
+                let opacity_data = [*opacity as f32];
+                let opacity_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                    label: Some(&format!("Blend Opacity Uniform Layer {}", i)),
+                    size: 16, // 4 bytes for f32 + 12 bytes padding for uniform buffer alignment
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                    mapped_at_creation: false,
+                });
+                queue.write_buffer(&opacity_buffer, 0, cast_slice(&opacity_data));
 
                 (
                     pipeline,
@@ -251,6 +418,7 @@ impl GpuBlendProcessor {
                     (dispatch_x, dispatch_y),
                     is_last,
                     *blend_mode,
+                    opacity_buffer,
                 )
             })
             .collect();
@@ -273,7 +441,7 @@ impl GpuBlendProcessor {
             let layer_views: Vec<_> = ops
                 .par_iter()
                 .map(|op| {
-                    let (_, layer_tex, _, _, _) = op;
+                    let (_, layer_tex, _, _, _, _) = op;
                     get_or_create_view(layer_tex.texture())
                 })
                 .collect();
@@ -325,7 +493,7 @@ impl GpuBlendProcessor {
         let execution_start = Instant::now();
 
         let first_layer = ops.get(0).expect("layers non vides");
-        let (pipeline, _layer_tex, dispatch, _is_last, blend_mode) = first_layer;
+        let (pipeline, _layer_tex, dispatch, _is_last, blend_mode, opacity_buffer) = first_layer;
         let layer_view = &all_layer_views[0];
 
         let first_bind_start = Instant::now();
@@ -344,6 +512,10 @@ impl GpuBlendProcessor {
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: wgpu::BindingResource::TextureView(&temp_a_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: opacity_buffer.as_entire_binding(),
                 },
             ],
         });
@@ -376,7 +548,7 @@ impl GpuBlendProcessor {
             .collect();
 
         for (i, op) in intermediate_ops.iter().enumerate() {
-            let (pipeline, _layer_tex, dispatch, _is_last, blend_mode) = op;
+            let (pipeline, _layer_tex, dispatch, _is_last, blend_mode, opacity_buffer) = op;
 
             let (src_view, dst_view) = if use_a_as_src {
                 (&temp_a_view, &temp_b_view)
@@ -402,6 +574,10 @@ impl GpuBlendProcessor {
                     wgpu::BindGroupEntry {
                         binding: 2,
                         resource: wgpu::BindingResource::TextureView(dst_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: opacity_buffer.as_entire_binding(),
                     },
                 ],
             });
@@ -431,7 +607,7 @@ impl GpuBlendProcessor {
         }
 
         if let Some(last_op) = ops.last() {
-            let (pipeline, _layer_tex, dispatch, _is_last, blend_mode) = last_op;
+            let (pipeline, _layer_tex, dispatch, _is_last, blend_mode, opacity_buffer) = last_op;
 
             let src_view = if use_a_as_src {
                 &temp_a_view
@@ -457,6 +633,10 @@ impl GpuBlendProcessor {
                     wgpu::BindGroupEntry {
                         binding: 2,
                         resource: wgpu::BindingResource::TextureView(base_view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 3,
+                        resource: opacity_buffer.as_entire_binding(),
                     },
                 ],
             });

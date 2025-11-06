@@ -28,7 +28,6 @@ pub struct ProjectSetupState {
 pub struct Preferences {
     pub dark_mode: bool,
     pub show_tooltips: Option<bool>,
-    pub renderer: Option<String>,
     pub theme_name: Option<String>,
 }
 
@@ -329,16 +328,7 @@ pub struct OtherParameters {
 #[serde(rename_all = "kebab-case")]
 pub enum BlendMode {
     SourceOver,
-    SourceIn,
-    SourceOut,
-    SourceAtop,
-    DestinationOver,
-    DestinationIn,
-    DestinationOut,
-    DestinationAtop,
     Lighter,
-    Copy,
-    Xor,
     Multiply,
     Screen,
     Overlay,
@@ -375,16 +365,7 @@ impl ToString for BlendMode {
     fn to_string(&self) -> String {
         match self {
             BlendMode::SourceOver => "source-over".to_string(),
-            BlendMode::SourceIn => "source-in".to_string(),
-            BlendMode::SourceOut => "source-out".to_string(),
-            BlendMode::SourceAtop => "source-atop".to_string(),
-            BlendMode::DestinationOver => "destination-over".to_string(),
-            BlendMode::DestinationIn => "destination-in".to_string(),
-            BlendMode::DestinationOut => "destination-out".to_string(),
-            BlendMode::DestinationAtop => "destination-atop".to_string(),
             BlendMode::Lighter => "lighter".to_string(),
-            BlendMode::Copy => "copy".to_string(),
-            BlendMode::Xor => "xor".to_string(),
             BlendMode::Multiply => "multiply".to_string(),
             BlendMode::Screen => "screen".to_string(),
             BlendMode::Overlay => "overlay".to_string(),

@@ -19,7 +19,6 @@ impl WorkerCalculator {
         &self,
         generation_demand: usize,
         save_demand: usize,
-        renderer_preference: &str,
     ) -> (u32, u32) {
         let num_cpus = num_cpus::get();
         let total_cpus = num_cpus as u32;
@@ -60,18 +59,17 @@ impl WorkerCalculator {
             save_workers = 0;
         }
 
-        if renderer_preference == "gpu" {
-            let original_generation = generation_workers;
-            let original_save = save_workers;
+        // GPU-only mode: always optimize for GPU workload
+        let original_generation = generation_workers;
+        let original_save = save_workers;
 
-            generation_workers = std::cmp::max(1, generation_workers / 3);
-            save_workers = std::cmp::max(1, save_workers / 2);
+        generation_workers = std::cmp::max(1, generation_workers / 3);
+        save_workers = std::cmp::max(1, save_workers / 2);
 
-            println!(
-                "🎮 [GPU OPTIM] Mode GPU - Réduction des workers: Génération {}→{}, Sauvegarde {}→{}",
-                original_generation, generation_workers, original_save, save_workers
-            );
-        }
+        println!(
+            "🎮 [GPU MODE] GPU worker optimization: Generation {}→{}, Save {}→{}",
+            original_generation, generation_workers, original_save, save_workers
+        );
 
         let max_generation_workers = std::cmp::min(total_cpus, generation_demand as u32);
         let max_save_workers = std::cmp::min(std::cmp::min(total_cpus, save_demand as u32), 8);

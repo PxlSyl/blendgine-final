@@ -15,7 +15,6 @@ export interface mainStoreState {
   showExtraButtons: boolean;
   showTooltips: boolean;
   sidebarFull: boolean;
-  renderer: 'cpu' | 'gpu';
 }
 
 export interface mainStoreActions {
@@ -33,8 +32,6 @@ export interface mainStoreActions {
   setShowExtraButtons: (show: boolean) => void;
   setShowTooltips: (show: boolean) => Promise<void>;
   setSidebarFull: (full: boolean) => void;
-  setRenderer: (renderer: 'cpu' | 'gpu') => Promise<void>;
-  checkAndSetOptimalRenderer: () => Promise<void>;
 }
 
 export interface SaveLoadState {

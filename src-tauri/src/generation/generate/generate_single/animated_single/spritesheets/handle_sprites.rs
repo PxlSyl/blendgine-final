@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{fs::create_dir_all, path::Path};
 
 use anyhow::Result;
 use image::DynamicImage;
@@ -10,7 +10,7 @@ pub fn handle_spritesheets(
     index: u32,
 ) -> Result<Vec<String>> {
     let sprite_sheet_base_path = sprites_path.join((index + 1).to_string());
-    std::fs::create_dir_all(&sprite_sheet_base_path)?;
+    create_dir_all(&sprite_sheet_base_path)?;
 
     let mut spritesheet_paths = Vec::new();
     let sheet_index = 0;

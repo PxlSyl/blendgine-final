@@ -109,6 +109,10 @@ impl GpuEffectManager {
         Ok(manager)
     }
 
+    pub fn from_existing(device: Arc<Device>, queue: Arc<Queue>) -> Self {
+        Self { device, queue }
+    }
+
     pub fn is_available(&self) -> bool {
         let limits = self.device.limits();
 

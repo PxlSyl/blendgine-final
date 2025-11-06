@@ -1,12 +1,14 @@
-use anyhow::Result;
-use image::{DynamicImage, GenericImageView};
+use std::path::PathBuf;
 
-use crate::effects::core::dispatch::blendmodes::BlendConverter;
+use anyhow::Result;
+use image::{open, DynamicImage, GenericImageView};
+
+use crate::effects::core::gpu::blend_modes_gpu::GpuBlendContext;
 use crate::generation::generate::layers::blend::LayerBlendProperties;
 use crate::types::SpritesheetLayout;
 
 pub fn blend_spritesheets_with_individual_properties(
-    spritesheet_paths: &[std::path::PathBuf],
+    spritesheet_paths: &[PathBuf],
     blend_properties_list: &[LayerBlendProperties],
     metadata: &SpritesheetLayout,
 ) -> Result<(DynamicImage, Vec<DynamicImage>)> {
@@ -22,10 +24,10 @@ pub fn blend_spritesheets_with_individual_properties(
         ));
     }
 
-    let mut blended_spritesheet = image::open(&spritesheet_paths[0])?;
+    let mut blended_spritesheet = open(&spritesheet_paths[0])?;
 
     for (index, spritesheet_path) in spritesheet_paths[1..].iter().enumerate() {
-        let next_spritesheet = image::open(spritesheet_path)?;
+        let next_spritesheet = open(spritesheet_path)?;
         let blend_properties = &blend_properties_list[index + 1];
 
         blended_spritesheet =
@@ -91,23 +93,21 @@ fn blend_spritesheets(
         ));
     }
 
-    let base_rgba = base_spritesheet.to_rgba8();
-    let overlay_rgba = overlay_spritesheet.to_rgba8();
+    let gpu_context = GpuBlendContext::get_global().ok_or_else(|| {
+        anyhow::anyhow!("GPU blend context not initialized. Call initialize_global first.")
+    })?;
 
-    let mut blend_converter = BlendConverter::new(&base_rgba.as_raw(), width, height)
-        .map_err(|e| anyhow::anyhow!("Failed to create blend converter: {}", e))?;
-
-    blend_converter
-        .apply_blend_mode(
-            &overlay_rgba.as_raw(),
+    let result = gpu_context
+        .processor
+        .blend_images(
+            gpu_context.manager.device(),
+            gpu_context.manager.queue(),
+            base_spritesheet,
+            overlay_spritesheet,
             blend_properties.mode,
             blend_properties.opacity,
         )
-        .map_err(|e| anyhow::anyhow!("Failed to apply blend mode: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to blend spritesheets: {}", e))?;
 
-    if let Some(blended_image) = blend_converter.get_image() {
-        Ok(DynamicImage::ImageRgba8(blended_image.clone()))
-    } else {
-        Err(anyhow::anyhow!("Failed to get blended image"))
-    }
+    Ok(result)
 }

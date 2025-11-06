@@ -1,6 +1,11 @@
 @group(0) @binding(0) var base_texture: texture_2d<f32>;
 @group(0) @binding(1) var overlay_texture: texture_2d<f32>;
 @group(0) @binding(2) var output_texture: texture_storage_2d<rgba8unorm, write>;
+@group(0) @binding(3) var<uniform> opacity_buffer: OpacityUniform;
+
+struct OpacityUniform {
+    opacity: f32,
+}
 
 @compute @workgroup_size(16, 16, 1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
@@ -12,7 +17,9 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
     
     let base = textureLoad(base_texture, vec2<u32>(pos), 0);
-    let overlay = textureLoad(overlay_texture, vec2<u32>(pos), 0);
+    var overlay = textureLoad(overlay_texture, vec2<u32>(pos), 0);
+    
+    overlay = vec4<f32>(overlay.rgb, overlay.a * opacity_buffer.opacity);
     
     let result_r_premult = min(overlay.r + base.r, 1.0);
     let result_g_premult = min(overlay.g + base.g, 1.0);

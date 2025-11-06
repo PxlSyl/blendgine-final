@@ -73,8 +73,3 @@ pub async fn set_total_traits_to_process(count: u32) {
         TOTAL_TRAITS_TO_PROCESS.store(count, Ordering::SeqCst);
     }
 }
-
-#[inline(always)]
-pub unsafe fn fast_copy(src: *const u8, dst: *mut u8, len: usize) {
-    std::ptr::copy_nonoverlapping(src, dst, len);
-}

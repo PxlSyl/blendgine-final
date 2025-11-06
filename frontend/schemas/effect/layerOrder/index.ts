@@ -351,7 +351,6 @@ export const ImageFramesSchema = S.mutable(
 export const PreferencesSchema = S.Struct({
   dark_mode: S.Boolean,
   showTooltips: S.optional(S.Boolean),
-  renderer: S.optional(S.Union(S.Literal('cpu'), S.Literal('gpu'))),
   theme_name: S.optional(
     S.Union(
       S.Literal('thelab'),

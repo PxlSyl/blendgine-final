@@ -478,6 +478,26 @@ async fn generate_nfts_with_tokio_native(
         num_cpus
     );
 
+    // Initialize GPU contexts globally before parallel tasks to prevent race conditions
+    use crate::effects::core::gpu::blend_modes_gpu::GpuBlendContext;
+    use crate::generation::generate::generate_single::static_single::get_or_init_shared_gpu_pipeline;
+
+    tracing::info!("🎮 [GPU INIT] Initializing global GPU contexts...");
+    if let Err(e) = get_or_init_shared_gpu_pipeline().await {
+        return Err(anyhow::anyhow!(
+            "Failed to initialize GPU pipeline: {}. GPU is required for generation.",
+            e
+        ));
+    }
+
+    if GpuBlendContext::initialize_global().await.is_none() {
+        return Err(anyhow::anyhow!(
+            "Failed to initialize GPU blend context. GPU is required for generation."
+        ));
+    }
+
+    tracing::info!("✅ [GPU INIT] Global GPU contexts initialized successfully");
+
     for index in 0..nft_count {
         let params_clone = params.clone();
         let task_id = format!("generation_{}", index);

@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 import { useStore } from '@/components/store';
 import { useKeyboardShortcuts } from '@/components/hooks/useKeyboardShortcuts';
-import { api } from '@/services';
 
 import MenuLayout from './Components/MenuLayout';
 import MenuButton from './Components/MenuButton';
@@ -27,41 +26,8 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
   const [isThemeSubMenuOpen, setIsThemeSubMenuOpen] = useState(false);
   const [isSidebarSubMenuOpen, setIsSidebarSubMenuOpen] = useState(false);
   const [isTooltipsSubMenuOpen, setIsTooltipsSubMenuOpen] = useState(false);
-  const [isRendererSubMenuOpen, setIsRendererSubMenuOpen] = useState(false);
-  const [gpuAvailable, setGpuAvailable] = useState<boolean | null>(null);
-  const {
-    showTooltips,
-    setShowTooltips,
-    darkMode,
-    setDarkMode,
-    sidebarFull,
-    setSidebarFull,
-    renderer,
-    setRenderer,
-  } = useStore();
-
-  useEffect(() => {
-    const checkGpu = async () => {
-      try {
-        const result = await api.checkGpuAvailability();
-        setGpuAvailable(result.available);
-
-        if (!result.available && renderer === 'gpu') {
-          console.warn('GPU not available, switching to CPU');
-          await setRenderer('cpu');
-        }
-      } catch (error) {
-        console.error('Failed to check GPU availability:', error);
-        setGpuAvailable(false);
-
-        if (renderer === 'gpu') {
-          console.warn('Could not check GPU availability, switching to CPU');
-          await setRenderer('cpu');
-        }
-      }
-    };
-    void checkGpu();
-  }, [renderer, setRenderer]);
+  const { showTooltips, setShowTooltips, darkMode, setDarkMode, sidebarFull, setSidebarFull } =
+    useStore();
 
   const handleToggleTooltips = async () => {
     await setShowTooltips(!showTooltips);
@@ -86,34 +52,10 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
     await setDarkMode(!darkMode);
   };
 
-  const handleSetCpuRenderer = async () => {
-    if (renderer !== 'cpu') {
-      await setRenderer('cpu');
-    }
-    onClose();
-  };
-
-  const handleSetGpuRenderer = async () => {
-    if (gpuAvailable === false) {
-      console.warn('Cannot switch to GPU: GPU not available');
-      return;
-    }
-
-    if (renderer !== 'gpu') {
-      await setRenderer('gpu');
-    }
-    onClose();
-  };
-
   useKeyboardShortcuts({
     'shift+t': () => !disabled && void handleToggleTheme(),
     'shift+h': () => !disabled && void handleToggleTooltips(),
     'shift+f': () => !disabled && setSidebarFull(!sidebarFull),
-    'shift+r': () =>
-      !disabled &&
-      (renderer === 'cpu' && gpuAvailable !== false
-        ? void handleSetGpuRenderer()
-        : void handleSetCpuRenderer()),
   });
 
   return (
@@ -203,39 +145,6 @@ const SettingsMenu: React.FC<SettingsMenuProps> = ({
           <div className="flex items-center justify-between w-full">
             <span className="flex-1 text-left">Compact</span>
             {!sidebarFull && (
-              <CheckIcon className="w-4 h-4 text-[rgb(var(--color-accent))] flex-shrink-0" />
-            )}
-          </div>
-        </MenuButton>
-      </SubMenu>
-      <SubMenu
-        label="Renderer"
-        shortcut="Shift+R"
-        isOpen={isRendererSubMenuOpen}
-        onMouseEnter={() => setIsRendererSubMenuOpen(true)}
-        onMouseLeave={() => setIsRendererSubMenuOpen(false)}
-      >
-        <MenuButton onClick={() => void handleSetCpuRenderer()}>
-          <div className="flex items-center justify-between w-full">
-            <span className="flex-1 text-left">CPU</span>
-            {renderer === 'cpu' && (
-              <CheckIcon className="w-4 h-4 text-[rgb(var(--color-accent))] flex-shrink-0" />
-            )}
-          </div>
-        </MenuButton>
-        <MenuButton
-          onClick={() => void handleSetGpuRenderer()}
-          isLast
-          disabled={gpuAvailable === false}
-        >
-          <div className="flex items-center justify-between w-full">
-            <span className={`flex-1 text-left ${gpuAvailable === false ? 'text-gray-400' : ''}`}>
-              GPU
-              {gpuAvailable === false && (
-                <span className="ml-2 text-xs text-red-500">(Non disponible)</span>
-              )}
-            </span>
-            {renderer === 'gpu' && gpuAvailable !== false && (
               <CheckIcon className="w-4 h-4 text-[rgb(var(--color-accent))] flex-shrink-0" />
             )}
           </div>

@@ -130,6 +130,16 @@ pub fn get_or_create_bind_group_layout(layout_name: &str) -> Arc<BindGroupLayout
                 },
                 count: None,
             },
+            wgpu::BindGroupLayoutEntry {
+                binding: 3,
+                visibility: wgpu::ShaderStages::COMPUTE,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: Some(std::num::NonZeroU64::new(16).unwrap()), // f32 = 4 bytes, we need 4 bytes for opacity + padding
+                },
+                count: None,
+            },
         ],
     });
 

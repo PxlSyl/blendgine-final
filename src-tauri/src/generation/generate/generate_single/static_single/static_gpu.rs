@@ -9,9 +9,8 @@ use dashmap::DashMap;
 use image::RgbaImage;
 use once_cell::sync::Lazy;
 
-use crate::effects::core::dispatch::blendmodes::BlendConverter;
 use crate::effects::core::{
-    cpu::resize_cpu::{ResizeAlgorithm, ResizeConfig, ResizeFilter},
+    cpu::resize_cpu::ResizeConfig,
     gpu::{
         blend_modes_gpu::{clear_blend_caches, GpuBlendProcessor},
         common::{clear_staging_buffer, GpuTexture},
@@ -41,7 +40,14 @@ pub async fn get_or_init_shared_gpu_pipeline() -> Result<Arc<StaticGpuPipeline>,
     let pipeline = Arc::new(StaticGpuPipeline::new().await?);
     let _ = SHARED_GPU_PIPELINE.set(pipeline.clone());
 
-    // Initialize ResizeGpu as well
+    Ok(pipeline)
+}
+
+pub async fn get_or_init_shared_resize_gpu() -> Result<Arc<ResizeGpu>, anyhow::Error> {
+    if let Some(resize_gpu) = SHARED_RESIZE_GPU.get() {
+        return Ok(resize_gpu.clone());
+    }
+
     let device = shaders::get_global_device()
         .ok_or_else(|| anyhow::anyhow!("Global device not initialized"))?;
     let queue = shaders::get_global_queue()
@@ -51,9 +57,11 @@ pub async fn get_or_init_shared_gpu_pipeline() -> Result<Arc<StaticGpuPipeline>,
         ResizeGpu::new(&device, &queue)
             .map_err(|e| anyhow::anyhow!("Failed to create ResizeGpu: {}", e))?,
     );
-    let _ = SHARED_RESIZE_GPU.set(resize_gpu);
+    let _ = SHARED_RESIZE_GPU.set(resize_gpu.clone());
 
-    Ok(pipeline)
+    tracing::info!("✅ [GPU RESIZE] Initialized on-demand");
+
+    Ok(resize_gpu)
 }
 
 pub fn get_shared_gpu_pipeline() -> Arc<StaticGpuPipeline> {
@@ -85,11 +93,8 @@ pub fn reset_shared_gpu_pipeline() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("🎯 [GPU RESET] Pipeline en état ULTRA PROPRE ✓");
     Ok(())
 }
-pub fn get_shared_resize_gpu() -> Arc<ResizeGpu> {
-    SHARED_RESIZE_GPU
-        .get()
-        .expect("Resize GPU not initialized")
-        .clone()
+pub fn get_shared_resize_gpu() -> Option<Arc<ResizeGpu>> {
+    SHARED_RESIZE_GPU.get().cloned()
 }
 
 fn clear_thread_local_caches() {
@@ -158,6 +163,7 @@ impl StaticGpuPipeline {
         final_width: u32,
         final_height: u32,
         resize_config: Option<&ResizeConfig>,
+        resize_gpu: &ResizeGpu,
     ) -> Result<GpuTexture> {
         let resized_texture = GpuTexture::new(
             self.gpu_manager.device(),
@@ -173,42 +179,12 @@ impl StaticGpuPipeline {
         );
         let output_gpu_image = GpuImage::new(resized_texture.texture(), final_width, final_height);
 
-        let algorithm = if let Some(config) = resize_config {
-            match config.algorithm {
-                ResizeAlgorithm::Nearest => 0,
-                ResizeAlgorithm::Convolution => 1,
-                ResizeAlgorithm::Interpolation => 1,
-                ResizeAlgorithm::SuperSampling => 3,
-            }
-        } else {
-            1
-        };
+        let algorithm = ResizeGpu::map_resize_algorithm(&resize_config.map(|c| c.clone()));
+        let filter_type = ResizeGpu::map_resize_filter(&resize_config.map(|c| c.clone()));
+        let super_sampling_factor =
+            ResizeGpu::map_super_sampling_factor(&resize_config.map(|c| c.clone()));
 
-        let filter_type = if let Some(config) = resize_config {
-            if let Some(filter) = &config.filter {
-                match filter {
-                    ResizeFilter::Nearest => 0,
-                    ResizeFilter::Bilinear => 1,
-                    ResizeFilter::Bicubic => 2,
-                    ResizeFilter::Lanczos => 3,
-                    ResizeFilter::Hamming => 4,
-                    ResizeFilter::Mitchell => 5,
-                    ResizeFilter::Gaussian => 6,
-                }
-            } else {
-                3
-            }
-        } else {
-            3
-        };
-
-        let super_sampling_factor = if let Some(config) = resize_config {
-            config.super_sampling_factor.unwrap_or(2) as u32
-        } else {
-            2
-        };
-
-        get_shared_resize_gpu()
+        resize_gpu
             .apply_resize(
                 self.gpu_manager.device(),
                 self.gpu_manager.queue(),
@@ -521,11 +497,25 @@ pub async fn process_static_single_gpu(
     index: u32,
     resize_config: Option<&ResizeConfig>,
 ) -> Result<()> {
-    // Initialize GPU pipeline first (must be done in async context)
     let _ = get_or_init_shared_gpu_pipeline().await?;
 
-    // Initialize GPU blend context if using GPU
-    let _ = BlendConverter::initialize_global_gpu_context().await;
+    // Initialize ResizeGpu ONLY if dimensions are different
+    if base_width != final_width || base_height != final_height {
+        let _ = get_or_init_shared_resize_gpu().await?;
+        tracing::debug!(
+            "🎮 [GPU INIT] ResizeGpu initialized for {}x{} → {}x{}",
+            base_width,
+            base_height,
+            final_width,
+            final_height
+        );
+    } else {
+        tracing::debug!(
+            "⏭️ [GPU SKIP] ResizeGpu not needed - dimensions unchanged ({}x{})",
+            base_width,
+            base_height
+        );
+    }
 
     let traits_owned = traits.to_vec();
     let active_layer_order_owned = active_layer_order.to_vec();
@@ -749,7 +739,7 @@ fn process_static_single_gpu_blocking(
                     .value()
                     .clone();
 
-                remaining_layers.push((&**layer_texture, blend_properties.mode));
+                remaining_layers.push((&**layer_texture, blend_properties.mode, blend_properties.opacity));
                 tracing::debug!(
                     "🎨 [GPU] Couche '{}' ajoutée au blending en lot",
                     layer_name
@@ -798,18 +788,43 @@ fn process_static_single_gpu_blocking(
             active_layer_order_arc.len()
         );
 
-        let destination_texture = get_or_create_global_resize_texture(
-            pipeline_arc.gpu_manager.device(),
-            *final_width_arc,
-            *final_height_arc,
-        );
+        // Only resize if dimensions are different
+        let final_texture =
+            if *base_width_arc != *final_width_arc || *base_height_arc != *final_height_arc {
+                tracing::info!(
+                    "🔄 [RESIZE] Resizing from {}x{} to {}x{}",
+                    *base_width_arc,
+                    *base_height_arc,
+                    *final_width_arc,
+                    *final_height_arc
+                );
 
-        let final_texture = pipeline_arc.resize_final_image(
-            &final_blended_texture,
-            destination_texture.texture().size().width,
-            destination_texture.texture().size().height,
-            resize_config_arc.as_deref(),
-        )?;
+                // Initialize ResizeGpu on-demand
+                let resize_gpu = get_shared_resize_gpu().ok_or_else(|| {
+                    anyhow::anyhow!("ResizeGpu not initialized. This should not happen.")
+                })?;
+
+                let destination_texture = get_or_create_global_resize_texture(
+                    pipeline_arc.gpu_manager.device(),
+                    *final_width_arc,
+                    *final_height_arc,
+                );
+
+                pipeline_arc.resize_final_image(
+                    &final_blended_texture,
+                    destination_texture.texture().size().width,
+                    destination_texture.texture().size().height,
+                    resize_config_arc.as_deref(),
+                    &resize_gpu,
+                )?
+            } else {
+                tracing::info!(
+                    "✅ [RESIZE] Skipping resize - dimensions unchanged ({}x{})",
+                    *base_width_arc,
+                    *base_height_arc
+                );
+                final_blended_texture
+            };
 
         // ⚠️ DIAGNOSTIC GLOBAL: Mesurer le temps total de traitement d'une image
         let total_image_start = std::time::Instant::now();
