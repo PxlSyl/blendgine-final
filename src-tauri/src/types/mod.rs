@@ -78,6 +78,10 @@ pub struct SetConfig {
     pub value: f32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_in_metadata: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset_x: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset_y: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -1,4 +1,4 @@
-import React, { memo, type CSSProperties } from 'react';
+import React, { memo, useCallback, type CSSProperties } from 'react';
 import { motion } from 'framer-motion';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -16,6 +16,7 @@ import {
   EyeOpenIcon,
   EyeClosedIcon,
   MixIcon,
+  MoveIcon,
   ArrowUpIcon,
   ArrowDownIcon,
   CheckIcon,
@@ -24,10 +25,12 @@ import { Tooltip } from '@/components/shared/ToolTip';
 import BlendModeModal from '../BlendModals/UniqueBlend';
 import LayerBlendModal from '../BlendModals/LayerBlend';
 import ImageTypeIcon from '@/components/shared/ImageTypeIcon';
+import { invoke } from '@tauri-apps/api/core';
 
 import { useDraggableLayer } from './hooks/useDraggableLayer';
 import SmallNumericStepper from '@/components/shared/SmallNumericStepper';
 import { useLayerOrder } from '@/components/store/layerOrder/hook';
+import { useProjectSetup } from '@/components/store/projectSetup/hook';
 
 interface DraggableLayerProps {
   layer: string;
@@ -69,6 +72,7 @@ const DraggableLayer: React.FC<DraggableLayerProps> = ({
     triggerGeneration,
     isGenerating,
   } = useLayerOrder();
+  const { selectedFolder } = useProjectSetup();
   const currentSetId = activeSetId ?? 'set1';
   const {
     isExpanded,
@@ -117,6 +121,28 @@ const DraggableLayer: React.FC<DraggableLayerProps> = ({
   });
 
   const traitNamesKey = Object.keys(traits).sort().join('|');
+
+  const handleOpenOffsetWindow = useCallback(
+    (traitName: string) => {
+      const setConfig = rarityConfig[layer]?.traits?.[traitName]?.sets?.[currentSetId];
+      const offsetX = setConfig?.offsetX ?? 0;
+      const offsetY = setConfig?.offsetY ?? 0;
+
+      // Get image URL for preview (from selectedFolder + layer + traitName)
+      const imageUrl = `asset://localhost/${selectedFolder}/${layer}/${traitName}`;
+
+      void invoke('open_offset_window', {
+        options: {
+          layer,
+          traitName,
+          offsetX,
+          offsetY,
+          imageUrl,
+        },
+      });
+    },
+    [layer, rarityConfig, currentSetId, selectedFolder]
+  );
 
   const {
     attributes,
@@ -590,6 +616,27 @@ const DraggableLayer: React.FC<DraggableLayerProps> = ({
                             />
                           )}
                         </div>
+                      </Tooltip>
+                    </div>
+
+                    <div
+                      className={`
+                          ${baseStyleSmall}
+                          ${!isTraitEnabled(traitName) && 'opacity-50'}
+                        `}
+                    >
+                      <Tooltip tooltip="Adjust X/Y offset">
+                        <button
+                          onClick={() => handleOpenOffsetWindow(traitName)}
+                          disabled={!isTraitEnabled(traitName)}
+                          className={`flex items-center justify-center w-6 h-6 ${
+                            !isTraitEnabled(traitName)
+                              ? 'opacity-50 cursor-not-allowed'
+                              : 'text-[rgb(var(--color-tertiary))] hover:text-[rgb(var(--color-tertiary-dark))] cursor-pointer'
+                          } transition-colors duration-300`}
+                        >
+                          <MoveIcon className="w-4 h-4" />
+                        </button>
                       </Tooltip>
                     </div>
 

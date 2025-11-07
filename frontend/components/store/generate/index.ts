@@ -82,6 +82,7 @@ export const useGenerateStore = create<AppState & AppActions>((set, get) => ({
     void useShortcutsStore.getState().closeShortcutsWindow();
     void useLayersviewStore.getState().closeWindow();
     void useLayerOrderZoomStore.getState().closeLayerOrderZoomWindow();
+    void api.closeOffsetWindow();
   },
   setShowDots: (show) => set({ showDots: show }),
   setShowConfetti: (show) => set({ showConfetti: show }),

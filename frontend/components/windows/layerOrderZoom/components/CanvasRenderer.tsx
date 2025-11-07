@@ -16,6 +16,8 @@ interface ImageConfig {
   spritesheetRows?: number;
   opacity?: number;
   blendMode?: GlobalCompositeOperation;
+  offsetX?: number;
+  offsetY?: number;
 }
 
 interface CanvasRendererProps {
@@ -116,8 +118,8 @@ export const CanvasRenderer: React.FC<CanvasRendererProps> = ({
             const scaledWidth = destWidth * zoom;
             const scaledHeight = destHeight * zoom;
 
-            const x = (canvas.width - scaledWidth) / 2;
-            const y = (canvas.height - scaledHeight) / 2;
+            const x = (canvas.width - scaledWidth) / 2 + (config.offsetX ?? 0) * zoom;
+            const y = (canvas.height - scaledHeight) / 2 + (config.offsetY ?? 0) * zoom;
 
             ctx.drawImage(
               img,
@@ -147,8 +149,8 @@ export const CanvasRenderer: React.FC<CanvasRendererProps> = ({
           const scaledWidth = destWidth * zoom;
           const scaledHeight = destHeight * zoom;
 
-          const x = (canvas.width - scaledWidth) / 2;
-          const y = (canvas.height - scaledHeight) / 2;
+          const x = (canvas.width - scaledWidth) / 2 + (config.offsetX ?? 0) * zoom;
+          const y = (canvas.height - scaledHeight) / 2 + (config.offsetY ?? 0) * zoom;
 
           ctx.drawImage(img, x, y, scaledWidth, scaledHeight);
         }

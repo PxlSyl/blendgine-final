@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { PreviewImage } from '@/types/preview';
+import type { RarityConfig } from '@/types/effect';
 import { SpriteSheetData } from '@/types/cannevasTypes';
 import { calculateTotalFrames } from '../utils/spritesheetUtils';
 
@@ -7,7 +8,9 @@ export const useImageConfigs = (
   sortedImages: PreviewImage[],
   framesByLayer: Record<string, Record<string, SpriteSheetData[]>>,
   width: number,
-  height: number
+  height: number,
+  rarityConfig?: RarityConfig,
+  currentSetId?: string
 ) => {
   return useMemo(() => {
     return sortedImages
@@ -35,6 +38,19 @@ export const useImageConfigs = (
           destX = (width - destWidth) / 2;
         }
 
+        let offsetX = 0;
+        let offsetY = 0;
+        if (rarityConfig && currentSetId) {
+          const layerConfig = rarityConfig[image.layerName];
+          const traitConfig = layerConfig?.traits?.[image.traitName];
+          const setConfig = traitConfig?.sets?.[currentSetId] ?? traitConfig?.sets?.['default'];
+          offsetX = setConfig?.offsetX ?? 0;
+          offsetY = setConfig?.offsetY ?? 0;
+        }
+
+        destX += offsetX;
+        destY += offsetY;
+
         const totalFrames = calculateTotalFrames(spritesheets);
 
         return {
@@ -53,5 +69,5 @@ export const useImageConfigs = (
         };
       })
       .filter(Boolean);
-  }, [sortedImages, framesByLayer, width, height]);
+  }, [sortedImages, framesByLayer, width, height, rarityConfig, currentSetId]);
 };

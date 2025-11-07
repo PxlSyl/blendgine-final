@@ -48,7 +48,10 @@ export const StaticCanvas: React.FC<StaticCanvasProps> = ({
     sortedImages.forEach((img) => {
       const layerConfig = rarityConfig[img.layerName];
       const traitConfig = layerConfig?.traits?.[img.traitName];
-      const blendConfig = traitConfig?.sets?.[currentSetId]?.blend ?? layerConfig?.defaultBlend;
+      const setConfig = traitConfig?.sets?.[currentSetId] ?? traitConfig?.sets?.['default'];
+      const blendConfig = setConfig?.blend ?? layerConfig?.defaultBlend;
+      const offsetX = setConfig?.offsetX ?? 0;
+      const offsetY = setConfig?.offsetY ?? 0;
 
       if (!img.element?.complete) {
         return;
@@ -67,8 +70,8 @@ export const StaticCanvas: React.FC<StaticCanvasProps> = ({
         destWidth = destHeight * imgAspectRatio;
       }
 
-      const x = (maxSize - destWidth) / 2;
-      const y = (maxSize - destHeight) / 2;
+      const x = (maxSize - destWidth) / 2 + offsetX;
+      const y = (maxSize - destHeight) / 2 + offsetY;
 
       ctx.save();
       ctx.imageSmoothingEnabled = false;

@@ -8,7 +8,8 @@
     "shortcuts-window",
     "layersview-window",
     "layer-order-zoom-window",
-    "theme-colors-window"
+    "theme-colors-window",
+    "offset-window"
   ],
   "permissions": [
     "core:default",

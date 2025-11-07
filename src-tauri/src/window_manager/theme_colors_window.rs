@@ -4,7 +4,7 @@ use tauri::{Emitter, Manager, Runtime, Theme, WebviewUrl, WebviewWindow, WindowE
 
 use crate::filesystem::{constants::StorageFiles, storage::load_storage};
 use crate::types::Preferences;
-use crate::window_manager::screen_utils::get_secondary_screen_config;
+use crate::window_manager::screen_utils::calculate_center_position;
 
 static THEME_COLORS_WINDOW: OnceCell<Mutex<Option<String>>> = OnceCell::new();
 
@@ -78,8 +78,6 @@ pub async fn open_theme_colors_window<R: Runtime>(
         Some(Theme::Light)
     };
 
-    let screen_config = get_secondary_screen_config(&app_handle);
-
     let mut builder = WebviewWindow::builder(
         &app_handle,
         &window_id,
@@ -91,10 +89,11 @@ pub async fn open_theme_colors_window<R: Runtime>(
     .always_on_top(true)
     .theme(theme.clone());
 
-    if let Some((x, y, width, height)) = screen_config {
-        builder = builder.inner_size(width, height).position(x, y);
-    } else {
-        builder = builder.inner_size(400.0, 500.0);
+    if let Some(main_window) = app_handle.get_webview_window("main") {
+        if let Ok(Some(primary_monitor)) = main_window.primary_monitor() {
+            let (center_x, center_y) = calculate_center_position(&primary_monitor, 400.0, 500.0);
+            builder = builder.position(center_x, center_y);
+        }
     }
 
     let theme_colors_window = builder.build().map_err(|e| e.to_string())?;

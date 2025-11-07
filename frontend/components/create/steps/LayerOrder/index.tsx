@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Effect } from 'effect';
+import { listen } from '@tauri-apps/api/event';
 
 import { useLayerOrder } from '@/components/store/layerOrder/hook';
 import { useProjectSetup } from '@/components/store/projectSetup/hook';
 import { useRarity } from '@/components/store/rarityStore/hook';
 import { useImageSorting } from './canvas/hooks/useImagesSorting';
+import type { RarityConfig, TraitConfig } from '@/types/effect';
 
 import StepWrapper from '@/components/heading/StepWrapper';
 import PreviewImage from './canvas/PreviewImage';
@@ -38,6 +40,7 @@ const LayerOrder: React.FC = () => {
     cameraType,
     images,
     updateImagesOrder,
+    updateRarityConfig,
   } = useLayerOrder();
 
   const { selectedFolder, validateAndReloadLayers } = useProjectSetup();
@@ -112,6 +115,57 @@ const LayerOrder: React.FC = () => {
     getRarityConfig,
     clearForcedCombinationsCache,
   ]);
+
+  // Listen for offset changes from offset window
+  useEffect(() => {
+    let cancelled = false;
+
+    const unlistenPromise = listen<{
+      layer: string;
+      trait: string;
+      offsetX: number;
+      offsetY: number;
+    }>('offset-changed', (event) => {
+      if (!cancelled && rarityConfig) {
+        const { layer, trait, offsetX, offsetY } = event.payload;
+        const currentSetId = activeSetId ?? 'set1';
+
+        updateRarityConfig((config: RarityConfig) => {
+          const newConfig: RarityConfig = JSON.parse(JSON.stringify(config)) as RarityConfig;
+
+          const layerConfig = newConfig[layer];
+          if (!layerConfig?.traits) {
+            return config;
+          }
+
+          const traitConfig: TraitConfig | undefined = layerConfig.traits[trait];
+          if (!traitConfig?.sets?.[currentSetId]) {
+            return config;
+          }
+
+          traitConfig.sets[currentSetId].offsetX = offsetX;
+          traitConfig.sets[currentSetId].offsetY = offsetY;
+
+          return newConfig;
+        });
+
+        void saveRarityConfig();
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      unlistenPromise
+        .then((unlistenFn) => {
+          if (!cancelled && typeof unlistenFn === 'function') {
+            unlistenFn();
+          }
+        })
+        .catch(() => {
+          // Silent fail
+        });
+    };
+  }, [rarityConfig, activeSetId, updateRarityConfig, saveRarityConfig]);
 
   const handleSetChange = (setNumber: number) => {
     setActiveSet(setNumber);

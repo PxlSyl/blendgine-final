@@ -93,6 +93,14 @@ fn blend_spritesheets(
         ));
     }
 
+    // Apply offset if specified
+    let final_overlay = if blend_properties.offset_x != 0 || blend_properties.offset_y != 0 {
+        use crate::effects::core::transform::apply_offset;
+        apply_offset(overlay_spritesheet, blend_properties.offset_x, blend_properties.offset_y)
+    } else {
+        overlay_spritesheet.clone()
+    };
+
     let gpu_context = GpuBlendContext::get_global().ok_or_else(|| {
         anyhow::anyhow!("GPU blend context not initialized. Call initialize_global first.")
     })?;
@@ -103,7 +111,7 @@ fn blend_spritesheets(
             gpu_context.manager.device(),
             gpu_context.manager.queue(),
             base_spritesheet,
-            overlay_spritesheet,
+            &final_overlay,
             blend_properties.mode,
             blend_properties.opacity,
         )

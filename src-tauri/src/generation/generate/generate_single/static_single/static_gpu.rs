@@ -13,17 +13,20 @@ use dashmap::DashMap;
 use image::{load_from_memory, load_from_memory_with_format, DynamicImage, ImageFormat, RgbaImage};
 use once_cell::sync::{Lazy, OnceCell};
 
-use crate::effects::core::{
-    cpu::resize_cpu::ResizeConfig,
-    gpu::{
-        blend_modes_gpu::{clear_blend_caches, GpuBlendProcessor},
-        common::{clear_staging_buffer, GpuTexture},
-        resize_gpu::ResizeGpu,
-        shaders, GpuEffectManager, GpuImage,
-    },
-};
 use crate::generation::generate::layers::blend::LayerBlendProperties;
 use crate::types::{NFTTrait, RarityConfig};
+use crate::{
+    effects::core::{
+        cpu::resize_cpu::ResizeConfig,
+        gpu::{
+            blend_modes_gpu::{clear_blend_caches, GpuBlendProcessor},
+            common::{clear_staging_buffer, GpuTexture},
+            resize_gpu::ResizeGpu,
+            shaders, GpuEffectManager, GpuImage,
+        },
+    },
+    types::BlendMode,
+};
 static BLEND_PROPERTIES_CACHE: Lazy<DashMap<String, LayerBlendProperties>> =
     Lazy::new(|| DashMap::new());
 
@@ -715,7 +718,7 @@ fn process_static_single_gpu_blocking(
                 layer_textures.len() - 1
             );
 
-            let mut remaining_layers = Vec::new();
+            let mut layer_textures_with_props: Vec<(Arc<GpuTexture>, BlendMode, f32)> = Vec::new();
 
             for (layer_name, layer_texture) in layer_textures.iter().skip(1) {
                 let found_layer = valid_layers
@@ -735,8 +738,39 @@ fn process_static_single_gpu_blocking(
                     .value()
                     .clone();
 
-                remaining_layers.push((
-                    &**layer_texture,
+                let final_texture = if blend_properties.offset_x != 0
+                    || blend_properties.offset_y != 0
+                {
+                    use crate::effects::core::transform::apply_offset;
+
+                    tracing::debug!(
+                        "🔄 [OFFSET] Applying offset X={}, Y={} to layer '{}'",
+                        blend_properties.offset_x,
+                        blend_properties.offset_y,
+                        layer_name
+                    );
+
+                    let image = layer_texture
+                        .to_image(
+                            pipeline_arc.gpu_manager.device(),
+                            pipeline_arc.gpu_manager.queue(),
+                        )
+                        .map_err(|e| anyhow::anyhow!("to_image failed: {}", e))?;
+                    let offset_image =
+                        apply_offset(&image, blend_properties.offset_x, blend_properties.offset_y);
+                    let new_texture = GpuTexture::from_image(
+                        pipeline_arc.gpu_manager.device(),
+                        pipeline_arc.gpu_manager.queue(),
+                        &offset_image,
+                    )
+                    .map_err(|e| anyhow::anyhow!("from_image failed: {}", e))?;
+                    Arc::new(new_texture)
+                } else {
+                    Arc::clone(layer_texture)
+                };
+
+                layer_textures_with_props.push((
+                    final_texture,
                     blend_properties.mode,
                     blend_properties.opacity,
                 ));
@@ -745,6 +779,11 @@ fn process_static_single_gpu_blocking(
                     layer_name
                 );
             }
+
+            let remaining_layers: Vec<(&GpuTexture, BlendMode, f32)> = layer_textures_with_props
+                .iter()
+                .map(|(tex, mode, opacity)| (tex.as_ref(), *mode, *opacity))
+                .collect();
 
             tracing::info!(
                 "🎯 [GPU] {} couches prêtes pour le blending en lot",

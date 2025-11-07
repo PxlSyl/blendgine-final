@@ -30,6 +30,7 @@ use window_manager::{
     layersview_window::{
         close_layersview_window, is_layersview_window_open, open_layersview_window,
     },
+    offset_window::{close_offset_window, get_offset_data, open_offset_window},
     rules_window::{close_rules_window, is_rules_window_open, open_rules_window},
     shortcuts_window::{close_shortcuts_window, is_shortcuts_window_open, open_shortcuts_window},
     show_dialog::show_dialog,
@@ -158,6 +159,10 @@ fn main() {
             open_layer_order_zoom_window,
             close_layer_order_zoom_window,
             is_layer_order_zoom_window_open,
+            // Offset window commands
+            open_offset_window,
+            close_offset_window,
+            get_offset_data,
             // hash handling
             is_folder_modified,
             calculate_folder_hash,

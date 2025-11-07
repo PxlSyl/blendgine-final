@@ -139,6 +139,8 @@ export const TraitSetConfigSchema = S.mutable(
     zIndex: S.Number.pipe(S.int()),
     includeInMetadata: S.optional(S.Boolean),
     locked: S.optional(S.Boolean),
+    offsetX: S.optional(S.Number.pipe(S.int())),
+    offsetY: S.optional(S.Number.pipe(S.int())),
   })
 );
 

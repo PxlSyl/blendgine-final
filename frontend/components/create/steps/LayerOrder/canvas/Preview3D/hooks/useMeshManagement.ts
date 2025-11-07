@@ -36,6 +36,26 @@ export const useMeshManagement = ({
 
   const currentSetId = activeSetId ?? 'set1';
 
+  const getOffset = useCallback(
+    (layer: string, traitName: string): { x: number; y: number } => {
+      const layerConfig = rarityConfig[layer];
+      const traitConfig = layerConfig?.traits?.[traitName];
+
+      if (traitConfig?.sets) {
+        const setConfig = traitConfig.sets[currentSetId] ?? traitConfig.sets['default'];
+        if (setConfig) {
+          return {
+            x: setConfig.offsetX ?? 0,
+            y: setConfig.offsetY ?? 0,
+          };
+        }
+      }
+
+      return { x: 0, y: 0 };
+    },
+    [rarityConfig, currentSetId]
+  );
+
   const createMeshesForLayers = useCallback(async () => {
     cleanupMeshesFromScene(meshesRef, scene);
 
@@ -88,8 +108,17 @@ export const useMeshManagement = ({
     const newMeshes = meshesWithZIndex.map(({ mesh }, index) => {
       const spacing = currentParams.layerSpacing;
       const thickness = currentParams.layerThickness;
+      const offset = getOffset(
+        mesh.userData.layerName as string,
+        mesh.userData.traitName as string
+      );
+
+      mesh.position.x = offset.x / 100;
+      mesh.position.y = -offset.y / 100;
       mesh.position.z = index * (spacing + thickness);
       mesh.userData.meshIndex = index;
+      mesh.userData.offsetX = offset.x;
+      mesh.userData.offsetY = offset.y;
       scene.add(mesh);
       return mesh;
     });
@@ -107,6 +136,7 @@ export const useMeshManagement = ({
     setMeshes,
     meshesRef,
     getCurrentParams,
+    getOffset,
   ]);
 
   useEffect(() => {
@@ -221,6 +251,12 @@ export const useMeshManagement = ({
         if (newTraitName && newTraitName !== mesh.userData.traitName) {
           mesh.userData.traitName = newTraitName;
 
+          const offset = getOffset(layerName, newTraitName);
+          mesh.position.x = offset.x / 100;
+          mesh.position.y = -offset.y / 100;
+          mesh.userData.offsetX = offset.x;
+          mesh.userData.offsetY = offset.y;
+
           if (isAnimatedCollection && spritesheetLayout) {
             if (newTraitName === 'None') {
               const material = mesh.material as THREE.MeshStandardMaterial;
@@ -285,7 +321,39 @@ export const useMeshManagement = ({
     if (meshesRef.current.length > 0) {
       void updateTextures();
     }
-  }, [currentTraits, meshesRef, framesByLayer, images, isAnimatedCollection, spritesheetLayout]);
+  }, [
+    currentTraits,
+    meshesRef,
+    framesByLayer,
+    images,
+    isAnimatedCollection,
+    spritesheetLayout,
+    getOffset,
+  ]);
+
+  useEffect(() => {
+    if (meshesRef.current.length === 0) {
+      return;
+    }
+
+    for (const mesh of meshesRef.current) {
+      const layerName = mesh.userData.layerName as string;
+      const traitName = mesh.userData.traitName as string;
+
+      if (layerName && traitName) {
+        const offset = getOffset(layerName, traitName);
+        const currentOffsetX = mesh.userData.offsetX as number | undefined;
+        const currentOffsetY = mesh.userData.offsetY as number | undefined;
+
+        if (offset.x !== currentOffsetX || offset.y !== currentOffsetY) {
+          mesh.position.x = offset.x / 100;
+          mesh.position.y = -offset.y / 100;
+          mesh.userData.offsetX = offset.x;
+          mesh.userData.offsetY = offset.y;
+        }
+      }
+    }
+  }, [rarityConfig, meshesRef, getOffset]);
 
   return { setupComplete };
 };

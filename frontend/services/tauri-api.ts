@@ -717,6 +717,10 @@ export class TauriApiService implements TauriApi {
     await invoke('open_rules_window', { options });
   }
 
+  async closeOffsetWindow(): Promise<void> {
+    await invoke('close_offset_window');
+  }
+
   onRulesWindowClosed(callback: () => void): () => void {
     let cancelled = false;
 

@@ -1,5 +1,6 @@
 pub mod layer_order_zoom_window;
 pub mod layersview_window;
+pub mod offset_window;
 pub mod rules_window;
 pub mod screen_utils;
 pub mod shortcuts_window;

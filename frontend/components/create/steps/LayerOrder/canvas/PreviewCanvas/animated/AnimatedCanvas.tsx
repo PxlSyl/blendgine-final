@@ -14,9 +14,16 @@ export const AnimatedCanvas: React.FC<{
 }> = React.memo(({ images, width, height }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { projectId } = useProjectSetup();
-  const { framesByLayer, currentFrame } = useLayerOrder();
+  const { framesByLayer, currentFrame, rarityConfig, activeSetId } = useLayerOrder();
 
-  const imageConfigs = useImageConfigs(images, framesByLayer, width, height);
+  const imageConfigs = useImageConfigs(
+    images,
+    framesByLayer,
+    width,
+    height,
+    rarityConfig,
+    activeSetId ?? undefined
+  );
 
   useEffect(() => {
     if (!canvasRef.current || !imageConfigs.length) {
