@@ -6,6 +6,7 @@ use std::{
 use anyhow::Result;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
+use walkdir::WalkDir;
 
 static LAYER_FILES_CACHE: Lazy<DashMap<String, (Vec<String>, Instant)>> =
     Lazy::new(|| DashMap::new());
@@ -138,8 +139,6 @@ fn scan_layer_directory(layer_path: &Path, is_animated: bool) -> Result<Vec<Stri
 }
 
 fn scan_spritesheet_paths(working_folder: &Path, layer: &str) -> Result<Vec<PathBuf>> {
-    use walkdir::WalkDir;
-
     let search_path = working_folder.join(layer);
     let mut paths = Vec::new();
 

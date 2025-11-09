@@ -8,8 +8,9 @@ use anyhow::{anyhow, Result};
 use once_cell::sync::Lazy;
 use parking_lot::Mutex as ParkingMutex;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use tauri::Emitter;
+use serde_json::{json, Value};
+use tauri::{Emitter, WebviewWindow};
+use tokio::time::sleep;
 use tracing;
 
 use crate::{
@@ -17,8 +18,10 @@ use crate::{
     generation::{
         clean_up_contexts::cleanup_all_global_contexts,
         generate::{
-            generate_single::file_watcher,
-            task_manager::{cancel_all_tasks, get_current_session_token},
+            generate_single::file_watcher::stop_file_watcher,
+            task_manager::{
+                cancel_all_tasks, create_generation_session, get_current_session_token,
+            },
             utils::clear_directory,
         },
     },
@@ -26,7 +29,7 @@ use crate::{
 
 pub static IS_PAUSED: AtomicBool = AtomicBool::new(false);
 
-pub static WINDOW: Lazy<ParkingMutex<Option<tauri::WebviewWindow>>> =
+pub static WINDOW: Lazy<ParkingMutex<Option<WebviewWindow>>> =
     Lazy::new(|| ParkingMutex::new(None));
 
 pub static EXPORT_FOLDER_PATH: Lazy<ParkingMutex<Option<PathBuf>>> =
@@ -49,7 +52,7 @@ pub enum GenerationStatus {
     Complete,
 }
 #[tauri::command]
-pub async fn toggle_generation_pause(is_paused: bool) -> Result<serde_json::Value, String> {
+pub async fn toggle_generation_pause(is_paused: bool) -> Result<Value, String> {
     IS_PAUSED.store(is_paused, Ordering::SeqCst);
 
     if let Some(window) = WINDOW.lock().as_ref() {
@@ -117,7 +120,7 @@ pub async fn reset_all_states_and_cleanup() {
         }
     }
 
-    let _ = crate::generation::generate::task_manager::create_generation_session();
+    let _ = create_generation_session();
 
     IS_PAUSED.store(false, Ordering::SeqCst);
 
@@ -128,7 +131,7 @@ pub async fn reset_all_states_and_cleanup() {
     clear_export_folder_path();
 
     tracing::info!("🧹 [PAUSE_CANCEL] Stopping grid file watcher...");
-    file_watcher::stop_file_watcher();
+    stop_file_watcher();
 
     tracing::info!("🧹 [PAUSE_CANCEL] Cleaning up GPU contexts...");
     cleanup_all_global_contexts().await;
@@ -147,7 +150,7 @@ pub async fn get_generation_status() -> Result<GenerationStatus, String> {
 
 pub async fn wait_for_pause() -> Result<()> {
     while IS_PAUSED.load(Ordering::SeqCst) {
-        tokio::time::sleep(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(100)).await;
         check_cancelled().await?;
     }
     Ok(())

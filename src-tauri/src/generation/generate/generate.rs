@@ -1,13 +1,14 @@
+use crate::effects::core::{cpu::resize_cpu::ResizeConfig, gpu::blend_modes_gpu::GpuBlendContext};
+use crate::generation::generate::generate_single::static_single::get_or_init_shared_gpu_pipeline;
+use crate::types::NFTGenerationArgs;
 use anyhow::Result;
 use dashmap::DashMap;
+use futures::future::join_all;
 use rayon::prelude::*;
-use std::time::Duration;
-use std::{env, fs, path::PathBuf, sync::Arc};
+use std::time::Instant;
+use std::{env, fs, path::PathBuf, sync::Arc, time::Duration};
 use tokio_util::sync::CancellationToken;
 use walkdir::WalkDir;
-
-use crate::effects::core::cpu::resize_cpu::ResizeConfig;
-use crate::types::NFTGenerationArgs;
 
 use crate::types::{
     AnimationQualityConfig, ForcedCombinations, ForcedCombinationsBySets, GenerationResult,
@@ -60,7 +61,7 @@ pub struct GlobalGenerationCaches {
     pub forced_combinations_maps: Arc<HashMap<String, ForcedCombinations>>,
     pub rarity_probability_cache: Arc<HashMap<String, HashMap<String, bool>>>,
     pub uniqueness_cache: Arc<DashMap<String, bool>>,
-    pub file_lookup_cache: Arc<DashMap<String, std::collections::HashSet<String>>>,
+    pub file_lookup_cache: Arc<DashMap<String, HashSet<String>>>,
 }
 
 impl Drop for GlobalGenerationCaches {
@@ -120,7 +121,7 @@ pub async fn generate_nfts(
 ) -> Result<(bool, String)> {
     println!("🚀 [DEBUG] Starting generate_nfts");
 
-    let start_time = std::time::Instant::now();
+    let start_time = Instant::now();
 
     let temp_frames_dir = env::temp_dir().join("blendgine");
     if temp_frames_dir.exists() {
@@ -478,10 +479,6 @@ async fn generate_nfts_with_tokio_native(
         num_cpus
     );
 
-    // Initialize GPU contexts globally before parallel tasks to prevent race conditions
-    use crate::effects::core::gpu::blend_modes_gpu::GpuBlendContext;
-    use crate::generation::generate::generate_single::static_single::get_or_init_shared_gpu_pipeline;
-
     tracing::info!("🎮 [GPU INIT] Initializing global GPU contexts...");
     if let Err(e) = get_or_init_shared_gpu_pipeline().await {
         return Err(anyhow::anyhow!(
@@ -551,7 +548,7 @@ async fn generate_nfts_with_tokio_native(
         tasks.len()
     );
 
-    let task_results = futures::future::join_all(tasks).await;
+    let task_results = join_all(tasks).await;
 
     let mut successful_results = Vec::new();
     let mut error_count = 0;

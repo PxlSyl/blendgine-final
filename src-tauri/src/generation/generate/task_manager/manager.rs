@@ -1,9 +1,19 @@
 use anyhow::Result;
 use num_cpus;
 use once_cell::sync::Lazy;
-use std::{sync::Arc, time::Duration};
-use tokio::sync::{RwLock, Semaphore};
+use std::{
+    future::Future,
+    sync::Arc,
+    time::{Duration, Instant},
+};
+use tokio::{
+    spawn,
+    sync::{RwLock, Semaphore, SemaphorePermit},
+    task::{spawn_blocking, JoinHandle},
+};
 use tokio_util::sync::CancellationToken;
+
+use crate::generation::generate::task_manager::MetricsUtils;
 
 static CURRENT_SESSION_TOKEN: Lazy<Arc<RwLock<CancellationToken>>> =
     Lazy::new(|| Arc::new(RwLock::new(CancellationToken::new())));
@@ -21,7 +31,7 @@ const MAX_BACKPRESSURE_ATTEMPTS: u32 = 100;
 async fn acquire_with_backpressure<'a>(
     sema: &'a Semaphore,
     task_type: &str,
-) -> Result<tokio::sync::SemaphorePermit<'a>> {
+) -> Result<SemaphorePermit<'a>> {
     for attempt in 1..=MAX_BACKPRESSURE_ATTEMPTS {
         if let Ok(permit) = sema.try_acquire() {
             return Ok(permit);
@@ -107,7 +117,6 @@ where
     let id = task_id.clone();
     let id_for_logging = id.clone();
 
-    // Vérifier l'annulation AVANT de commencer la tâche
     if cancel_token.is_cancelled() {
         tracing::info!(
             "🛑 [SAVE] Task cancelled before execution: {}",
@@ -116,8 +125,8 @@ where
         return Err(anyhow::anyhow!("Save task cancelled"));
     }
 
-    let result = tokio::task::spawn_blocking(move || {
-        let start_time = std::time::Instant::now();
+    let result = spawn_blocking(move || {
+        let start_time = Instant::now();
         let task_id_for_inner = id.clone();
         tracing::debug!("🔄 [SAVE] Executing task: {}", task_id_for_inner);
 
@@ -162,16 +171,16 @@ where
 pub async fn spawn_generation_task<F, Fut, T>(
     task_id: String,
     task_fn: F,
-) -> Result<tokio::task::JoinHandle<Result<T>>>
+) -> Result<JoinHandle<Result<T>>>
 where
     F: FnOnce() -> Fut + Send + 'static,
-    Fut: std::future::Future<Output = Result<T>> + Send,
+    Fut: Future<Output = Result<T>> + Send,
     T: Send + 'static,
 {
     tracing::debug!("🚀 [GENERATION] Starting task: {}", task_id);
 
     let task_id_for_logging = task_id.clone();
-    let handle = tokio::spawn(async move {
+    let handle = spawn(async move {
         run_with_semaphore(&GENERATION_SEMAPHORE, task_id, task_fn, "generation").await
     });
 
@@ -182,10 +191,7 @@ where
     Ok(handle)
 }
 
-pub async fn spawn_save_task<F>(
-    task_id: String,
-    save_fn: F,
-) -> Result<tokio::task::JoinHandle<Result<()>>>
+pub async fn spawn_save_task<F>(task_id: String, save_fn: F) -> Result<JoinHandle<Result<()>>>
 where
     F: FnOnce() -> Result<()> + Send + 'static,
 {
@@ -196,7 +202,7 @@ pub async fn spawn_save_task_with_cancellation<F, C>(
     task_id: String,
     save_fn: F,
     cancellation_check: Option<C>,
-) -> Result<tokio::task::JoinHandle<Result<()>>>
+) -> Result<JoinHandle<Result<()>>>
 where
     F: FnOnce() -> Result<()> + Send + 'static,
     C: Fn() -> bool + Send + 'static,
@@ -204,7 +210,7 @@ where
     tracing::debug!("🔄 [SAVE] Starting task: {}", task_id);
 
     let task_id_for_logging = task_id.clone();
-    let handle = tokio::spawn(async move {
+    let handle = spawn(async move {
         let result = run_save_with_semaphore(
             &SAVE_SEMAPHORE,
             task_id.clone(),
@@ -248,7 +254,7 @@ pub async fn get_current_session_token() -> CancellationToken {
 
 pub fn get_system_info() -> String {
     let num_cpus = num_cpus::get();
-    let (cpu_usage, memory_usage) = crate::generation::generate::task_manager::metrics::MetricsUtils::measure_system_performance();
+    let (cpu_usage, memory_usage) = MetricsUtils::measure_system_performance();
 
     let generation_available = GENERATION_SEMAPHORE.available_permits();
     let save_available = SAVE_SEMAPHORE.available_permits();
