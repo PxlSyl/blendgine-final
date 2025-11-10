@@ -1,12 +1,14 @@
-use crate::generation::generate::task_manager::spawn_save_task;
 use anyhow::{Context, Result};
 use image::DynamicImage;
 use std::path::Path;
 use tokio::fs::create_dir_all;
 
-use crate::generation::generate::save_animation::save::{
-    save_gif::save_gif_animation, save_mp4::save_mp4_animation, save_webm::save_webm_animation,
-    save_webp::save_webp_animation, structs::WorkerOptions,
+use crate::generation::generate::{
+    save_animation::save::{
+        save_gif::save_gif_animation, save_mp4::save_mp4_animation, save_webm::save_webm_animation,
+        save_webp::save_webp_animation, structs::WorkerOptions,
+    },
+    task_manager::spawn_save_task,
 };
 
 pub async fn save_animation(frames: &[DynamicImage], options: &WorkerOptions) -> Result<()> {

@@ -1,6 +1,6 @@
 use crate::types::{NFTTrait, RarityConfig, SolanaMetadataConfig};
 use anyhow::Result;
-use serde_json::json;
+use serde_json::{json, Map, Value};
 #[derive(Debug, Clone, PartialEq)]
 pub enum Blockchain {
     Eth,
@@ -19,8 +19,8 @@ pub fn generate_metadata(
     include_rarity: bool,
     rarity_config: &RarityConfig,
     current_set_id: &str,
-) -> Result<serde_json::Value> {
-    let filtered_traits: Vec<serde_json::Value> = if include_rarity {
+) -> Result<Value> {
+    let filtered_traits: Vec<Value> = if include_rarity {
         traits
             .iter()
             .filter(|trait_data| {
@@ -56,7 +56,7 @@ pub fn generate_metadata(
     let base_uri = "ipfs://NewUriToReplace//";
     let image_name = format!("{}_{}.{}", collection_name, index + 1, image_format);
 
-    let mut map = serde_json::Map::new();
+    let mut map = Map::new();
 
     map.insert(
         "name".to_string(),
@@ -86,5 +86,5 @@ pub fn generate_metadata(
         }
     }
 
-    Ok(serde_json::Value::Object(map))
+    Ok(Value::Object(map))
 }

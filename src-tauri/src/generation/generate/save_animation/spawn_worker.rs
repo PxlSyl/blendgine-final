@@ -1,14 +1,19 @@
 use anyhow::{Context, Result};
 use image::GenericImageView;
 
-use crate::effects::core::{
-    gpu::{resize_gpu::ResizeGpu, shaders},
-    interpolate::{interpolation::InterpolationEngine, InterpolationOptions},
+use crate::{
+    effects::core::{
+        gpu::{
+            resize_gpu::ResizeGpu,
+            shaders::{get_global_device, get_global_queue},
+        },
+        interpolate::{interpolation::InterpolationEngine, InterpolationOptions},
+    },
+    generation::generate::save_animation::save::{
+        save_file::save_animation, structs::WorkerOptions,
+    },
+    types::InterpolationMethod,
 };
-use crate::generation::generate::save_animation::save::{
-    save_file::save_animation, structs::WorkerOptions,
-};
-use crate::types::InterpolationMethod;
 
 pub async fn spawn_animation_worker(options: WorkerOptions) -> Result<()> {
     let frames = options.frames.clone();
@@ -152,9 +157,9 @@ pub async fn spawn_animation_worker(options: WorkerOptions) -> Result<()> {
                 options.height
             );
 
-            let device = shaders::get_global_device()
+            let device = get_global_device()
                 .ok_or_else(|| anyhow::anyhow!("Global GPU device not initialized"))?;
-            let queue = shaders::get_global_queue()
+            let queue = get_global_queue()
                 .ok_or_else(|| anyhow::anyhow!("Global GPU queue not initialized"))?;
 
             let resize_gpu = ResizeGpu::new(&device, &queue)

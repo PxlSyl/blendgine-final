@@ -1,8 +1,7 @@
 use anyhow::Result;
 use std::{collections::HashMap, path::Path};
 
-use crate::effects::core::cpu::resize_cpu::ResizeConfig;
-use crate::effects::core::gpu::blend_modes_gpu::GpuBlendContext;
+use crate::effects::core::{gpu::blend_modes_gpu::GpuBlendContext, gpu::resize_gpu::ResizeConfig};
 use crate::generation::generate::{
     generate_single::animated_single::spritesheets::{
         frames::extract_and_process_all_frames, handle_spritesheets,

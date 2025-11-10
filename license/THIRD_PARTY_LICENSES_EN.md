@@ -12,7 +12,6 @@ This document lists the licenses of third-party libraries and dependencies used 
 - **serde_json** (1.0) - JSON serialization
 - **tokio** (1.0) - Asynchronous runtime
 - **image** (0.24) - Image manipulation
-- **fast_image_resize** (2.7.0) - Fast image resizing
 - **tiny-skia** (0.11) - 2D graphics rendering
 - **palette** (0.7) - Color manipulation
 - **rusttype** (0.9) - Text rendering
@@ -28,7 +27,6 @@ This document lists the licenses of third-party libraries and dependencies used 
 - **rand_chacha** (0.3) - ChaCha generator
 - **chrono** (0.4) - Date/time manipulation
 - **futures** (0.3) - Asynchronous futures
-- **lazy_static** (1.4.0) - Static initialization
 - **dirs** (5.0) - System paths
 - **once_cell** (1.19.0) - One-time initialization cells
 - **rayon** (1.8) - Parallelism

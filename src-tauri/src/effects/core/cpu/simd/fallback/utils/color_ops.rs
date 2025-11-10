@@ -1,18 +1,6 @@
 use num_complex::Complex;
 use rayon::prelude::*;
 
-pub fn quantize_color_fallback(color: f32, quantization_factor: f32) -> f32 {
-    (color / quantization_factor).round() * quantization_factor
-}
-
-pub fn quantize_colors_fallback(colors: [f32; 3], quantization_factor: f32) -> [f32; 3] {
-    [
-        quantize_color_fallback(colors[0], quantization_factor),
-        quantize_color_fallback(colors[1], quantization_factor),
-        quantize_color_fallback(colors[2], quantization_factor),
-    ]
-}
-
 pub fn rgb_to_grayscale_fallback(rgb: &[u8], _width: u32, _height: u32) -> Vec<u8> {
     let pixel_count = rgb.len() / 3;
     (0..pixel_count)

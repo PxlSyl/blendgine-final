@@ -8,6 +8,7 @@ use anyhow::Result;
 use csv::Writer;
 use rust_xlsxwriter::Workbook;
 use serde::{Deserialize, Serialize};
+use serde_json::{from_str, Value};
 
 use crate::types::RarityConfig;
 
@@ -192,7 +193,7 @@ pub fn calculate_image_rarity(
         }
 
         let content = fs::read_to_string(&path)?;
-        let metadata: serde_json::Value = serde_json::from_str(&content)?;
+        let metadata: Value = from_str(&content)?;
 
         if let Some(attributes) = metadata.get("attributes").and_then(|a| a.as_array()) {
             for attribute in attributes {
@@ -217,7 +218,7 @@ pub fn calculate_image_rarity(
         }
 
         let content = fs::read_to_string(&path)?;
-        let metadata: serde_json::Value = serde_json::from_str(&content)?;
+        let metadata: Value = from_str(&content)?;
 
         if let (Some(image), Some(attributes)) = (
             metadata.get("image").and_then(|i| i.as_str()),

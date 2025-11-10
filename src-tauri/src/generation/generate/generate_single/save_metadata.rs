@@ -1,11 +1,17 @@
 use anyhow::Result;
-use std::path::Path;
-
-use crate::generation::generate::{
-    generate_single::progress::send_generation_progress,
-    metadata::create_single::{generate_metadata, Blockchain},
+use serde_json::to_string_pretty;
+use std::{
+    fs::{create_dir_all, write},
+    path::Path,
 };
-use crate::types::{GenerationResult, NFTTrait, RarityConfig, SolanaMetadataConfig};
+
+use crate::{
+    generation::generate::{
+        generate_single::progress::send_generation_progress,
+        metadata::create_single::{generate_metadata, Blockchain},
+    },
+    types::{GenerationResult, NFTTrait, RarityConfig, SolanaMetadataConfig},
+};
 
 pub fn save_metadata_file(
     traits: &[NFTTrait],
@@ -38,12 +44,12 @@ pub fn save_metadata_file(
     )?;
 
     let metadata_path = export_folder.join("collection").join("metadata");
-    std::fs::create_dir_all(&metadata_path)?;
+    create_dir_all(&metadata_path)?;
 
     let metadata_filename = format!("{}_{}.json", collection_name, index + 1);
     let metadata_filepath = metadata_path.join(&metadata_filename);
 
-    std::fs::write(&metadata_filepath, serde_json::to_string_pretty(&metadata)?)?;
+    write(&metadata_filepath, to_string_pretty(&metadata)?)?;
 
     if let Err(e) = send_generation_progress(
         traits,

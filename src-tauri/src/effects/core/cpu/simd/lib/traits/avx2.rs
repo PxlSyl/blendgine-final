@@ -14,228 +14,61 @@ impl SimdArchitecture for Avx2Architecture {
     }
 
     unsafe fn set1_ps(value: f32) -> Self::FloatVector {
-        _mm256_set1_ps(value)
-    }
-
-    unsafe fn set1_epi32(value: i32) -> Self::IntVector {
-        _mm256_set1_epi32(value)
-    }
-
-    unsafe fn setr_epi8_r_mask() -> Self::IntVector {
-        _mm256_setr_epi8(
-            0, -1, -1, -1, 4, -1, -1, -1, 8, -1, -1, -1, 12, -1, -1, -1, 0, -1, -1, -1, 4, -1, -1,
-            -1, 8, -1, -1, -1, 12, -1, -1, -1,
-        )
-    }
-
-    unsafe fn setr_epi8_g_mask() -> Self::IntVector {
-        _mm256_setr_epi8(
-            1, -1, -1, -1, 5, -1, -1, -1, 9, -1, -1, -1, 13, -1, -1, -1, 1, -1, -1, -1, 5, -1, -1,
-            -1, 9, -1, -1, -1, 13, -1, -1, -1,
-        )
-    }
-
-    unsafe fn setr_epi8_b_mask() -> Self::IntVector {
-        _mm256_setr_epi8(
-            2, -1, -1, -1, 6, -1, -1, -1, 10, -1, -1, -1, 14, -1, -1, -1, 2, -1, -1, -1, 6, -1, -1,
-            -1, 10, -1, -1, -1, 14, -1, -1, -1,
-        )
-    }
-
-    unsafe fn setr_epi8_a_mask() -> Self::IntVector {
-        _mm256_setr_epi8(
-            3, -1, -1, -1, 7, -1, -1, -1, 11, -1, -1, -1, 15, -1, -1, -1, 3, -1, -1, -1, 7, -1, -1,
-            -1, 11, -1, -1, -1, 15, -1, -1, -1,
-        )
+        unsafe { _mm256_set1_ps(value) }
     }
 
     unsafe fn add_ps(a: &Self::FloatVector, b: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_add_ps(*a, *b)
-    }
-
-    unsafe fn add_epi32(a: &Self::IntVector, b: &Self::IntVector) -> Self::IntVector {
-        _mm256_add_epi32(*a, *b)
+        unsafe { _mm256_add_ps(*a, *b) }
     }
 
     unsafe fn sub_ps(a: &Self::FloatVector, b: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_sub_ps(*a, *b)
+        unsafe { _mm256_sub_ps(*a, *b) }
     }
 
     unsafe fn mul_ps(a: &Self::FloatVector, b: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_mul_ps(*a, *b)
+        unsafe { _mm256_mul_ps(*a, *b) }
     }
 
     unsafe fn div_ps(a: &Self::FloatVector, b: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_div_ps(*a, *b)
-    }
-
-    unsafe fn fmadd_ps(
-        a: &Self::FloatVector,
-        b: &Self::FloatVector,
-        c: &Self::FloatVector,
-    ) -> Self::FloatVector {
-        _mm256_fmadd_ps(*a, *b, *c)
+        unsafe { _mm256_div_ps(*a, *b) }
     }
 
     unsafe fn sqrt_ps(a: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_sqrt_ps(*a)
-    }
-
-    unsafe fn cmp_gt_ps(a: &Self::FloatVector, b: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_cmp_ps(*a, *b, _CMP_GT_OQ)
-    }
-
-    unsafe fn cmp_lt_ps(a: &Self::FloatVector, b: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_cmp_ps(*a, *b, _CMP_LT_OQ)
-    }
-
-    unsafe fn cmp_le_ps(a: &Self::FloatVector, b: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_cmp_ps(*a, *b, _CMP_LE_OQ)
-    }
-
-    unsafe fn cmp_ge_ps(a: &Self::FloatVector, b: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_cmp_ps(*a, *b, _CMP_GE_OQ)
-    }
-
-    unsafe fn min_ps(a: &Self::FloatVector, b: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_min_ps(*a, *b)
+        unsafe { _mm256_sqrt_ps(*a) }
     }
 
     unsafe fn max_ps(a: &Self::FloatVector, b: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_max_ps(*a, *b)
-    }
-
-    unsafe fn or_ps(a: &Self::FloatVector, b: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_or_ps(*a, *b)
-    }
-
-    unsafe fn and_ps(a: &Self::FloatVector, b: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_and_ps(*a, *b)
-    }
-
-    unsafe fn andnot_ps(a: &Self::FloatVector, b: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_andnot_ps(*a, *b)
+        unsafe { _mm256_max_ps(*a, *b) }
     }
 
     unsafe fn load_ps(ptr: *const f32) -> Self::FloatVector {
-        _mm256_loadu_ps(ptr)
-    }
-
-    unsafe fn cvtps_epi32(a: &Self::FloatVector) -> Self::IntVector {
-        _mm256_cvtps_epi32(*a)
-    }
-
-    unsafe fn cvtpi32_ps(a: &Self::IntVector) -> Self::FloatVector {
-        _mm256_cvtepi32_ps(*a)
-    }
-
-    unsafe fn cvtepu8_epi32(a: &Self::IntVector128) -> Self::IntVector {
-        _mm256_cvtepu8_epi32(*a)
-    }
-
-    unsafe fn shuffle_epi8(a: &Self::IntVector, b: &Self::IntVector) -> Self::IntVector {
-        _mm256_shuffle_epi8(*a, *b)
-    }
-
-    unsafe fn castsi256_si128(a: &Self::IntVector) -> Self::IntVector128 {
-        _mm256_castsi256_si128(*a)
-    }
-
-    unsafe fn load_rgba_with_alpha(
-        input: &image::RgbaImage,
-        x_base: usize,
-        y: usize,
-        kx: i32,
-        ky: i32,
-    ) -> (
-        Self::FloatVector,
-        Self::FloatVector,
-        Self::FloatVector,
-        Self::FloatVector,
-    ) {
-        let _nx = (x_base as i32 + kx).clamp(0, input.width() as i32 - 1) as u32;
-        let ny = (y as i32 + ky).clamp(0, input.height() as i32 - 1) as u32;
-        let mut r_values = [0.0f32; 8];
-        let mut g_values = [0.0f32; 8];
-        let mut b_values = [0.0f32; 8];
-        let mut a_values = [0.0f32; 8];
-        for i in 0..8 {
-            let x = x_base + i;
-            if x >= input.width() as usize {
-                continue;
-            }
-            let pixel = input.get_pixel(x as u32, ny);
-            r_values[i] = pixel[0] as f32;
-            g_values[i] = pixel[1] as f32;
-            b_values[i] = pixel[2] as f32;
-            a_values[i] = pixel[3] as f32;
-        }
-        let r_vec = _mm256_loadu_ps(r_values.as_ptr());
-        let g_vec = _mm256_loadu_ps(g_values.as_ptr());
-        let b_vec = _mm256_loadu_ps(b_values.as_ptr());
-        let a_vec = _mm256_loadu_ps(a_values.as_ptr());
-        (r_vec, g_vec, b_vec, a_vec)
-    }
-
-    unsafe fn load_rgba_raw(
-        input: &image::RgbaImage,
-        x_base: usize,
-        y: usize,
-        kx: i32,
-        ky: i32,
-    ) -> Self::IntVector {
-        let _nx = (x_base as i32 + kx).clamp(0, input.width() as i32 - 1) as u32;
-        let ny = (y as i32 + ky).clamp(0, input.height() as i32 - 1) as u32;
-        let mut rgba_vals = [0u8; 32];
-        for i in 0..8 {
-            let x = x_base + i;
-            if x >= input.width() as usize {
-                continue;
-            }
-            let pixel = input.get_pixel(x as u32, ny);
-            let base_idx = i * 4;
-            rgba_vals[base_idx] = pixel[0];
-            rgba_vals[base_idx + 1] = pixel[1];
-            rgba_vals[base_idx + 2] = pixel[2];
-            rgba_vals[base_idx + 3] = pixel[3];
-        }
-        _mm256_loadu_si256(rgba_vals.as_ptr() as *const __m256i)
+        unsafe { _mm256_loadu_ps(ptr) }
     }
 
     unsafe fn store_ps(ptr: *mut f32, a: &Self::FloatVector) {
-        _mm256_storeu_ps(ptr, *a);
-    }
-
-    unsafe fn store_si256(ptr: *mut i32, a: &Self::IntVector) {
-        _mm256_storeu_si256(ptr as *mut __m256i, *a);
+        unsafe { _mm256_storeu_ps(ptr, *a) };
     }
 
     unsafe fn round_ps(a: &Self::FloatVector) -> Self::FloatVector {
-        _mm256_round_ps(*a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC)
+        unsafe { _mm256_round_ps(*a, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC) }
     }
 
     unsafe fn from_array_ps(arr: &[f32]) -> Self::FloatVector {
         debug_assert!(arr.len() >= 8);
-        std::arch::x86_64::_mm256_loadu_ps(arr.as_ptr())
+        unsafe { std::arch::x86_64::_mm256_loadu_ps(arr.as_ptr()) }
     }
 
     unsafe fn atan2_ps(y: &Self::FloatVector, x: &Self::FloatVector) -> Self::FloatVector {
         let mut y_arr = [0.0f32; 8];
         let mut x_arr = [0.0f32; 8];
-        _mm256_storeu_ps(y_arr.as_mut_ptr(), *y);
-        _mm256_storeu_ps(x_arr.as_mut_ptr(), *x);
+        unsafe {
+            _mm256_storeu_ps(y_arr.as_mut_ptr(), *y);
+            _mm256_storeu_ps(x_arr.as_mut_ptr(), *x);
+        }
         let mut res = [0.0f32; 8];
         for i in 0..8 {
             res[i] = y_arr[i].atan2(x_arr[i]);
         }
-        _mm256_loadu_ps(res.as_ptr())
-    }
-
-    unsafe fn extract_f32(a: &Self::FloatVector, idx: usize) -> f32 {
-        debug_assert!(idx < 8, "Index out of bounds for AVX2 vector");
-
-        let mut tmp = [0.0f32; 8];
-        _mm256_storeu_ps(tmp.as_mut_ptr(), *a);
-        tmp[idx]
+        unsafe { _mm256_loadu_ps(res.as_ptr()) }
     }
 }

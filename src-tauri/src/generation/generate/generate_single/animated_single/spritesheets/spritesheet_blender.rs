@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::Result;
 use image::{open, DynamicImage, GenericImageView};
 
-use crate::effects::core::gpu::blend_modes_gpu::GpuBlendContext;
+use crate::effects::core::{gpu::blend_modes_gpu::GpuBlendContext, transform::apply_offset};
 use crate::generation::generate::layers::blend::LayerBlendProperties;
 use crate::types::SpritesheetLayout;
 
@@ -93,10 +93,12 @@ fn blend_spritesheets(
         ));
     }
 
-    // Apply offset if specified
     let final_overlay = if blend_properties.offset_x != 0 || blend_properties.offset_y != 0 {
-        use crate::effects::core::transform::apply_offset;
-        apply_offset(overlay_spritesheet, blend_properties.offset_x, blend_properties.offset_y)
+        apply_offset(
+            overlay_spritesheet,
+            blend_properties.offset_x,
+            blend_properties.offset_y,
+        )
     } else {
         overlay_spritesheet.clone()
     };

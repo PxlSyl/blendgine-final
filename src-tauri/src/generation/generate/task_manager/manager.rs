@@ -10,6 +10,7 @@ use tokio::{
     spawn,
     sync::{RwLock, Semaphore, SemaphorePermit},
     task::{spawn_blocking, JoinHandle},
+    time::sleep,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -46,7 +47,7 @@ async fn acquire_with_backpressure<'a>(
             );
         }
 
-        tokio::time::sleep(BACKPRESSURE_SLEEP).await;
+        sleep(BACKPRESSURE_SLEEP).await;
     }
 
     tracing::warn!(
@@ -71,7 +72,7 @@ async fn run_with_semaphore<F, Fut, T>(
 ) -> Result<T>
 where
     F: FnOnce() -> Fut + Send,
-    Fut: std::future::Future<Output = Result<T>> + Send,
+    Fut: Future<Output = Result<T>> + Send,
     T: Send,
 {
     let permit = acquire_with_backpressure(sema, task_type).await?;
@@ -91,7 +92,7 @@ where
             tracing::info!("🛑 [{}] Task {} cancelled", task_type.to_uppercase(), id);
             Err(anyhow::anyhow!("Task cancelled"))
         }
-        _ = tokio::time::sleep(TASK_TIMEOUT) => {
+        _ = sleep(TASK_TIMEOUT) => {
             tracing::error!("⏰ [{}] Task {} timed out after {:?}", task_type.to_uppercase(), id, TASK_TIMEOUT);
             Err(anyhow::anyhow!("Task timed out after {:?}", TASK_TIMEOUT))
         }

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use rand::{rngs::StdRng, seq::SliceRandom, SeedableRng};
-use serde_json::Value;
+use serde_json::{from_str, to_string_pretty, Value};
 use std::{collections::BTreeMap, fs, path::Path};
 
 use crate::types::GenerationResult;
@@ -49,7 +49,7 @@ pub fn shuffle_and_rename(
             fs::copy(&old_metadata, &temp_metadata)?;
 
             let mut metadata: BTreeMap<String, Value> =
-                serde_json::from_str(&fs::read_to_string(&old_metadata)?)?;
+                from_str(&fs::read_to_string(&old_metadata)?)?;
 
             metadata.remove("name");
             metadata.remove("edition");
@@ -99,7 +99,7 @@ pub fn shuffle_and_rename(
                 metadata.insert("creators".to_string(), v);
             }
 
-            fs::write(&temp_metadata, serde_json::to_string_pretty(&metadata)?)?;
+            fs::write(&temp_metadata, to_string_pretty(&metadata)?)?;
         }
 
         if include_spritesheets && old_sprite.exists() {

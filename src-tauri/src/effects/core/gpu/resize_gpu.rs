@@ -1,10 +1,59 @@
-use crate::effects::core::{
-    cpu::resize_cpu::{ResizeAlgorithm, ResizeConfig, ResizeFilter},
-    gpu::{common::GpuTexture, shaders, GpuImage},
-};
+use crate::effects::core::gpu::{common::GpuTexture, shaders, GpuImage};
 use image::DynamicImage;
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 use wgpu::{Device, Queue};
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum ResizeAlgorithm {
+    Nearest,
+    Convolution,
+    Interpolation,
+    SuperSampling,
+}
+
+impl Default for ResizeAlgorithm {
+    fn default() -> Self {
+        Self::Convolution
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum ResizeFilter {
+    Nearest,
+    Bilinear,
+    Bicubic,
+    Lanczos,
+    Hamming,
+    Mitchell,
+    Gaussian,
+}
+
+impl Default for ResizeFilter {
+    fn default() -> Self {
+        Self::Lanczos
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ResizeConfig {
+    pub algorithm: ResizeAlgorithm,
+    pub filter: Option<ResizeFilter>,
+    pub super_sampling_factor: Option<u8>,
+}
+
+impl Default for ResizeConfig {
+    fn default() -> Self {
+        Self {
+            algorithm: ResizeAlgorithm::Convolution,
+            filter: Some(ResizeFilter::Lanczos),
+            super_sampling_factor: None,
+        }
+    }
+}
 
 #[repr(C, align(16))]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]

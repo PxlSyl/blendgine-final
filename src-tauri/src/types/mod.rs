@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::effects::core::cpu::resize_cpu::ResizeConfig;
+use crate::effects::core::gpu::resize_gpu::ResizeConfig;
 
 #[derive(Serialize, Deserialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]

@@ -1,6 +1,8 @@
+use std::iter::empty;
+
 use bytemuck::{cast_slice, Pod, Zeroable};
 use image::DynamicImage;
-use tokio::sync::oneshot;
+use tokio::sync::oneshot::{channel, Receiver};
 use wgpu::util::DeviceExt;
 use wgpu::*;
 
@@ -200,10 +202,7 @@ impl GpuSpritesheetRenderer {
         frame_data_bytes: &[u8],
         input_u32: &[u32],
         output_pixels_count: usize,
-    ) -> (
-        Buffer,
-        oneshot::Receiver<Result<(), wgpu::BufferAsyncError>>,
-    ) {
+    ) -> (Buffer, Receiver<Result<(), wgpu::BufferAsyncError>>) {
         let input_bytes = (input_u32.len() * 4) as u64;
         let frame_bytes = frame_data_bytes.len() as u64;
         let output_bytes = (output_pixels_count * 4) as u64;
@@ -249,7 +248,7 @@ impl GpuSpritesheetRenderer {
         self.queue.write_buffer(input_buf, 0, cast_slice(input_u32));
         self.queue.write_buffer(frame_buf, 0, frame_data_bytes);
 
-        self.queue.submit(std::iter::empty());
+        self.queue.submit(empty());
 
         let bind_group = self.create_bind_group(input_buf, frame_buf, output_buf);
 
@@ -284,7 +283,7 @@ impl GpuSpritesheetRenderer {
         self.device.poll(Maintain::Poll);
 
         let slice = staging.slice(..);
-        let (tx, rx) = oneshot::channel();
+        let (tx, rx) = channel();
         slice.map_async(MapMode::Read, move |res| {
             let _ = tx.send(res);
         });

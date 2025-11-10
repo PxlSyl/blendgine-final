@@ -1,6 +1,5 @@
 #[cfg(target_arch = "x86_64")]
 use crate::effects::core::cpu::simd::traits::{Avx2Architecture, SseArchitecture};
-use crate::types::BlendMode;
 #[cfg(target_arch = "aarch64")]
 use traits::NeonArchitecture;
 
@@ -12,6 +11,7 @@ pub mod lib;
 
 pub use lib::*;
 
+#[inline(always)]
 pub fn normalize_to_255_simd(data: &mut [f32]) {
     #[cfg(target_arch = "x86_64")]
     {
@@ -37,6 +37,7 @@ pub fn normalize_to_255_simd(data: &mut [f32]) {
     }
 }
 
+#[inline(always)]
 pub fn normalize_minmax_simd(data: &mut [f32]) {
     #[cfg(target_arch = "x86_64")]
     {
@@ -62,6 +63,7 @@ pub fn normalize_minmax_simd(data: &mut [f32]) {
     }
 }
 
+#[inline(always)]
 pub fn rgb_to_grayscale_simd(rgb: &[u8], width: u32, height: u32) -> Vec<u8> {
     #[cfg(target_arch = "x86_64")]
     {
@@ -83,10 +85,11 @@ pub fn rgb_to_grayscale_simd(rgb: &[u8], width: u32, height: u32) -> Vec<u8> {
     }
     #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
     {
-        fallback::utils::color_ops::rgb_to_grayscale(rgb, width, height)
+        rgb_to_grayscale_fallback(rgb, width, height)
     }
 }
 
+#[inline(always)]
 pub fn gray_to_rgb_simd(gray: &[f32], width: u32, height: u32) -> Vec<u8> {
     #[cfg(target_arch = "x86_64")]
     {
@@ -112,6 +115,7 @@ pub fn gray_to_rgb_simd(gray: &[f32], width: u32, height: u32) -> Vec<u8> {
     }
 }
 
+#[inline(always)]
 pub fn gaussian_blur_5x5_simd(data: &[f32], width: u32, height: u32) -> Vec<f32> {
     #[cfg(target_arch = "x86_64")]
     {
@@ -137,6 +141,7 @@ pub fn gaussian_blur_5x5_simd(data: &[f32], width: u32, height: u32) -> Vec<f32>
     }
 }
 
+#[inline(always)]
 pub fn compute_movement_simd(
     frame1_gray: &[u8],
     frame2_gray: &[u8],
@@ -167,6 +172,7 @@ pub fn compute_movement_simd(
     }
 }
 
+#[inline(always)]
 pub fn cart_to_polar_2d_simd(
     complex_data: &[Complex<f32>],
     rows: usize,
@@ -193,77 +199,5 @@ pub fn cart_to_polar_2d_simd(
     #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
     {
         cart_to_polar_2d_fallback(complex_data, rows, cols)
-    }
-}
-
-#[inline(always)]
-pub fn apply_blend_simd(
-    blend_mode: BlendMode,
-    source: &image::RgbaImage,
-    destination: &image::RgbaImage,
-) -> image::RgbaImage {
-    #[cfg(target_arch = "x86_64")]
-    {
-        if is_x86_feature_detected!("avx2") {
-            lib::framework::blend::apply_blend::<Avx2Architecture>(blend_mode, source, destination)
-        } else if is_x86_feature_detected!("sse4.1") {
-            lib::framework::blend::apply_blend::<SseArchitecture>(blend_mode, source, destination)
-        } else {
-            fallback::blend::apply_blend(blend_mode, source, destination)
-        }
-    }
-    #[cfg(target_arch = "aarch64")]
-    {
-        if is_arm_feature_detected!("neon") {
-            lib::framework::blend::apply_blend::<NeonArchitecture>(blend_mode, source, destination)
-        } else {
-            fallback::blend::apply_blend(blend_mode, source, destination)
-        }
-    }
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-    {
-        fallback::blend::apply_blend(blend_mode, source, destination)
-    }
-}
-
-#[inline(always)]
-pub fn apply_blend_simd_inplace(
-    blend_mode: BlendMode,
-    source: &image::RgbaImage,
-    destination: &mut image::RgbaImage,
-) {
-    #[cfg(target_arch = "x86_64")]
-    {
-        if is_x86_feature_detected!("avx2") {
-            lib::framework::blend::apply_blend_inplace::<Avx2Architecture>(
-                blend_mode,
-                source,
-                destination,
-            )
-        } else if is_x86_feature_detected!("sse4.1") {
-            lib::framework::blend::apply_blend_inplace::<SseArchitecture>(
-                blend_mode,
-                source,
-                destination,
-            )
-        } else {
-            fallback::blend::apply_blend_inplace(blend_mode, source, destination)
-        }
-    }
-    #[cfg(target_arch = "aarch64")]
-    {
-        if is_arm_feature_detected!("neon") {
-            lib::framework::blend::apply_blend_inplace::<NeonArchitecture>(
-                blend_mode,
-                source,
-                destination,
-            )
-        } else {
-            fallback::blend::apply_blend_inplace(blend_mode, source, destination)
-        }
-    }
-    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-    {
-        fallback::blend::apply_blend_inplace(blend_mode, source, destination)
     }
 }

@@ -2,52 +2,6 @@ use crate::effects::core::cpu::simd::traits::*;
 use num_complex::Complex;
 use rayon::prelude::*;
 
-pub fn quantize_color<A: SimdArchitecture>(color: f32, quantization_factor: f32) -> f32 {
-    unsafe {
-        let color_vec = A::set1_ps(color);
-        let factor_vec = A::set1_ps(quantization_factor);
-        let div_result = A::div_ps(&color_vec, &factor_vec);
-        let rounded = A::round_ps(&div_result);
-        let result = A::mul_ps(&rounded, &factor_vec);
-        let mut result_array = [0.0f32; 8];
-        A::store_ps(result_array.as_mut_ptr(), &result);
-        result_array[0]
-    }
-}
-
-pub fn quantize_colors<A: SimdArchitecture>(
-    colors: [f32; 3],
-    quantization_factor: f32,
-) -> [f32; 3] {
-    unsafe {
-        let r_vec = A::set1_ps(colors[0]);
-        let g_vec = A::set1_ps(colors[1]);
-        let b_vec = A::set1_ps(colors[2]);
-        let factor_vec = A::set1_ps(quantization_factor);
-
-        let r_div = A::div_ps(&r_vec, &factor_vec);
-        let g_div = A::div_ps(&g_vec, &factor_vec);
-        let b_div = A::div_ps(&b_vec, &factor_vec);
-
-        let r_rounded = A::round_ps(&r_div);
-        let g_rounded = A::round_ps(&g_div);
-        let b_rounded = A::round_ps(&b_div);
-
-        let r_result = A::mul_ps(&r_rounded, &factor_vec);
-        let g_result = A::mul_ps(&g_rounded, &factor_vec);
-        let b_result = A::mul_ps(&b_rounded, &factor_vec);
-
-        let mut r_array = [0.0f32; 8];
-        let mut g_array = [0.0f32; 8];
-        let mut b_array = [0.0f32; 8];
-
-        A::store_ps(r_array.as_mut_ptr(), &r_result);
-        A::store_ps(g_array.as_mut_ptr(), &g_result);
-        A::store_ps(b_array.as_mut_ptr(), &b_result);
-
-        [r_array[0], g_array[0], b_array[0]]
-    }
-}
 pub fn rgb_to_grayscale<A: SimdArchitecture>(rgb: &[u8], _width: u32, _height: u32) -> Vec<u8> {
     let pixel_count = rgb.len() / 3;
     let simd_width = A::chunk_size();

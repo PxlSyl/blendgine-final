@@ -1,41 +1,46 @@
-use crate::effects::core::{cpu::resize_cpu::ResizeConfig, gpu::blend_modes_gpu::GpuBlendContext};
-use crate::generation::generate::generate_single::static_single::get_or_init_shared_gpu_pipeline;
-use crate::types::NFTGenerationArgs;
 use anyhow::Result;
 use dashmap::DashMap;
 use futures::future::join_all;
 use rayon::prelude::*;
-use std::time::Instant;
-use std::{env, fs, path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    env, fs,
+    path::PathBuf,
+    sync::Arc,
+    time::Duration,
+    time::Instant,
+};
+use tauri::Window;
 use tokio_util::sync::CancellationToken;
 use walkdir::WalkDir;
 
-use crate::types::{
-    AnimationQualityConfig, ForcedCombinations, ForcedCombinationsBySets, GenerationResult,
-    Incompatibilities, IncompatibilitiesBySets, NFTTrait, OrderedLayersSets, RarityConfig,
-    SolanaMetadataConfig, SpritesheetLayout,
-};
-
-use crate::generation::{
-    clean_up_contexts::cleanup_all_global_contexts,
-    generate::{
-        generate_single::generate_single_artwork::generate_single_artwork,
-        layers::traits_selection::precompute_incompatibilities,
-        metadata::{create_global::create_global_metadata, create_single::Blockchain},
-        pausecancel::{check_cancelled, set_export_folder_path, wait_for_pause},
-        rarity::{calculate_image_rarity, create_rarity_files},
-        shuffle::shuffle_and_rename,
-        task_manager::{
-            create_generation_session, get_semaphore_info, get_system_info, spawn_generation_task,
-            MetricsUtils, PerformanceMetrics,
+use crate::{
+    effects::core::gpu::{blend_modes_gpu::GpuBlendContext, resize_gpu::ResizeConfig},
+    generation::{
+        clean_up_contexts::cleanup_all_global_contexts,
+        generate::{
+            generate_single::{
+                generate_single_artwork::generate_single_artwork,
+                static_single::get_or_init_shared_gpu_pipeline,
+            },
+            layers::traits_selection::precompute_incompatibilities,
+            metadata::{create_global::create_global_metadata, create_single::Blockchain},
+            pausecancel::{check_cancelled, set_export_folder_path, wait_for_pause},
+            rarity::{calculate_image_rarity, create_rarity_files},
+            shuffle::shuffle_and_rename,
+            task_manager::{
+                create_generation_session, get_semaphore_info, get_system_info,
+                spawn_generation_task, MetricsUtils, PerformanceMetrics,
+            },
         },
+        generation_main::GenerationPaths,
     },
-    generation_main::GenerationPaths,
+    types::{
+        AnimationQualityConfig, ForcedCombinations, ForcedCombinationsBySets, GenerationResult,
+        Incompatibilities, IncompatibilitiesBySets, NFTGenerationArgs, NFTTrait, OrderedLayersSets,
+        RarityConfig, SolanaMetadataConfig, SpritesheetLayout,
+    },
 };
-
-use tauri::Window;
-
-use std::collections::{HashMap, HashSet};
 
 fn precompute_rarity_cache(rarity_config: &RarityConfig) -> HashMap<String, HashMap<String, bool>> {
     let mut cache = HashMap::new();

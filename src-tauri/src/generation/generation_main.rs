@@ -3,11 +3,12 @@ use chrono;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
+    future::Future,
     path::{Path, PathBuf},
     str::FromStr,
 };
 use tauri::{Manager, Window};
-use tokio::fs::create_dir_all;
+use tokio::{fs::create_dir_all, try_join};
 use tracing;
 
 use crate::{
@@ -22,9 +23,8 @@ use crate::{
         generate::generate_nfts, generate_single::file_watcher::start_file_watcher,
         metadata::create_single::Blockchain, utils::clear_directory,
     },
+    types::{NFTGenerationArgs, OrderedLayersSet},
 };
-
-use crate::types::{NFTGenerationArgs, OrderedLayersSet};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -74,7 +74,7 @@ pub struct GenerationPaths {
 pub async fn load_state<T, F, Fut>(loader: F, name: &str) -> Result<T>
 where
     F: FnOnce() -> Fut,
-    Fut: std::future::Future<Output = Result<T, String>>,
+    Fut: Future<Output = Result<T, String>>,
 {
     loader()
         .await
@@ -148,7 +148,7 @@ pub async fn invoke_generation(
 
     let app_state = window.state::<StorageFiles>();
 
-    let (rarity_config, layer_order, incompatibilities, forced_combinations) = tokio::try_join!(
+    let (rarity_config, layer_order, incompatibilities, forced_combinations) = try_join!(
         load_state(
             || load_rarity_config(app_state.clone()),
             "rarity configuration"

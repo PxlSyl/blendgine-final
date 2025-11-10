@@ -6,19 +6,16 @@ use std::{
 use anyhow::Result;
 
 use crate::{
-    effects::core::cpu::resize_cpu::ResizeConfig,
+    effects::core::gpu::resize_gpu::ResizeConfig,
     generation::generate::{
+        generate::GlobalGenerationCaches,
         generate_single::{
             animated_single::animated_single_cpu::process_animated_collection,
             generate_traits::generate_traits_and_validate, save_metadata::save_metadata_file,
+            static_single::process_static_single,
         },
         metadata::create_single::Blockchain,
         pausecancel::{check_cancelled, wait_for_pause},
-    },
-};
-use crate::{
-    generation::generate::{
-        generate::GlobalGenerationCaches, generate_single::static_single::process_static_single,
     },
     types::{
         AnimationQualityConfig, ForcedCombinations, GenerationResult, RarityConfig,

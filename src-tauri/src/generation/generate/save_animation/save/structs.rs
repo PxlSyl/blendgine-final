@@ -1,4 +1,4 @@
-use crate::{effects::core::cpu::resize_cpu::ResizeConfig, types::AnimationQualityConfig};
+use crate::{effects::core::gpu::resize_gpu::ResizeConfig, types::AnimationQualityConfig};
 use image::DynamicImage;
 
 #[derive(Debug, Clone)]

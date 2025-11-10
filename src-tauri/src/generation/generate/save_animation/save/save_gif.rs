@@ -1,10 +1,11 @@
 use anyhow::{Context, Result};
 use image::DynamicImage;
-use std::{path::Path, thread, time::Duration};
+use std::{path::Path, thread::sleep, time::Duration};
 
-use crate::ffmpeg_wrapper::FFmpegWrapper;
-use crate::filesystem::utils::ensure_file_ready;
-use crate::generation::generate::save_animation::save::structs::WorkerOptions;
+use crate::{
+    ffmpeg_wrapper::FFmpegWrapper, filesystem::utils::ensure_file_ready,
+    generation::generate::save_animation::save::structs::WorkerOptions,
+};
 
 pub fn save_gif_animation(
     frames: &[DynamicImage],
@@ -29,7 +30,7 @@ pub fn save_gif_animation(
         .context("Failed to encode GIF with FFmpeg")?;
 
     ensure_file_ready(output_path)?;
-    thread::sleep(Duration::from_millis(200));
+    sleep(Duration::from_millis(200));
 
     Ok(())
 }

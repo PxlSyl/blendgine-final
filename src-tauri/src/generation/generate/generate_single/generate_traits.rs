@@ -5,15 +5,17 @@ use std::{
 
 use anyhow::Result;
 
-use crate::generation::generate::{
-    layers::handle_files::handle_layer_files,
-    layers::traits_selection::{
-        check_compatibility, handle_forced_combinations, select_random_with_rarity,
-    },
-    layers::unicity::{generate_dna, is_unique_combination},
-};
 use crate::{
-    generation::generate::generate::GlobalGenerationCaches,
+    generation::generate::{
+        generate::GlobalGenerationCaches,
+        layers::{
+            handle_files::handle_layer_files,
+            traits_selection::{
+                check_compatibility, handle_forced_combinations, select_random_with_rarity,
+            },
+            unicity::{generate_dna, is_unique_combination},
+        },
+    },
     types::{ForcedCombinations, NFTTrait, RarityConfig},
 };
 

@@ -12,7 +12,6 @@ Ce document liste les licences des bibliothèques et dépendances tierces utilis
 - **serde_json** (1.0) - Sérialisation JSON
 - **tokio** (1.0) - Runtime asynchrone
 - **image** (0.24) - Manipulation d'images
-- **fast_image_resize** (2.7.0) - Redimensionnement rapide d'images
 - **tiny-skia** (0.11) - Rendu graphique 2D
 - **palette** (0.7) - Manipulation de couleurs
 - **rusttype** (0.9) - Rendu de texte
@@ -28,7 +27,6 @@ Ce document liste les licences des bibliothèques et dépendances tierces utilis
 - **rand_chacha** (0.3) - Générateur ChaCha
 - **chrono** (0.4) - Manipulation de dates
 - **futures** (0.3) - Futures asynchrones
-- **lazy_static** (1.4.0) - Initialisation statique
 - **dirs** (5.0) - Chemins système
 - **once_cell** (1.19.0) - Cellules d'initialisation unique
 - **rayon** (1.8) - Parallélisation

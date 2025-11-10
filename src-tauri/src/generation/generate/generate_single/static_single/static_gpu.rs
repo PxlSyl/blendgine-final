@@ -7,26 +7,30 @@ use std::{
     thread::sleep,
     time::{Duration, Instant},
 };
+use tokio::task::spawn_blocking;
 
 use anyhow::Result;
 use dashmap::DashMap;
 use image::{load_from_memory, load_from_memory_with_format, DynamicImage, ImageFormat, RgbaImage};
 use once_cell::sync::{Lazy, OnceCell};
 
-use crate::generation::generate::layers::blend::LayerBlendProperties;
-use crate::types::{NFTTrait, RarityConfig};
 use crate::{
     effects::core::{
-        cpu::resize_cpu::ResizeConfig,
         gpu::{
             blend_modes_gpu::{clear_blend_caches, GpuBlendProcessor},
             common::{clear_staging_buffer, GpuTexture},
-            resize_gpu::ResizeGpu,
-            shaders, GpuEffectManager, GpuImage,
+            resize_gpu::{ResizeConfig, ResizeGpu},
+            shaders::{
+                clear_shader_cache, get_global_device, get_global_queue, initialize_global_device,
+            },
+            GpuEffectManager, GpuImage,
         },
+        transform::apply_offset,
     },
-    types::BlendMode,
+    generation::generate::layers::blend::LayerBlendProperties,
+    types::{BlendMode, NFTTrait, RarityConfig},
 };
+
 static BLEND_PROPERTIES_CACHE: Lazy<DashMap<String, LayerBlendProperties>> =
     Lazy::new(|| DashMap::new());
 
@@ -34,8 +38,8 @@ static RESIZE_TEXTURES: Lazy<DashMap<(u32, u32), Arc<GpuTexture>>> = Lazy::new(|
 
 static STAGING_BUFFERS_CACHE: Lazy<DashMap<u64, Arc<wgpu::Buffer>>> = Lazy::new(|| DashMap::new());
 
-static SHARED_GPU_PIPELINE: once_cell::sync::OnceCell<Arc<StaticGpuPipeline>> = OnceCell::new();
-static SHARED_RESIZE_GPU: once_cell::sync::OnceCell<Arc<ResizeGpu>> = OnceCell::new();
+static SHARED_GPU_PIPELINE: OnceCell<Arc<StaticGpuPipeline>> = OnceCell::new();
+static SHARED_RESIZE_GPU: OnceCell<Arc<ResizeGpu>> = OnceCell::new();
 
 pub async fn get_or_init_shared_gpu_pipeline() -> Result<Arc<StaticGpuPipeline>, anyhow::Error> {
     if let Some(pipeline) = SHARED_GPU_PIPELINE.get() {
@@ -53,10 +57,10 @@ pub async fn get_or_init_shared_resize_gpu() -> Result<Arc<ResizeGpu>, anyhow::E
         return Ok(resize_gpu.clone());
     }
 
-    let device = shaders::get_global_device()
-        .ok_or_else(|| anyhow::anyhow!("Global device not initialized"))?;
-    let queue = shaders::get_global_queue()
-        .ok_or_else(|| anyhow::anyhow!("Global queue not initialized"))?;
+    let device =
+        get_global_device().ok_or_else(|| anyhow::anyhow!("Global device not initialized"))?;
+    let queue =
+        get_global_queue().ok_or_else(|| anyhow::anyhow!("Global queue not initialized"))?;
 
     let resize_gpu = Arc::new(
         ResizeGpu::new(&device, &queue)
@@ -82,15 +86,13 @@ pub fn reset_shared_gpu_pipeline() -> Result<(), Box<dyn std::error::Error>> {
     clear_thread_local_caches();
     RESIZE_TEXTURES.clear();
     STAGING_BUFFERS_CACHE.clear();
-    shaders::clear_shader_cache();
-
+    clear_shader_cache();
     clear_staging_buffer();
-
     clear_blend_caches();
 
     tracing::info!("✅ [GPU RESET] Caches CPU et pools de buffers nettoyés");
 
-    if let Some(device) = shaders::get_global_device() {
+    if let Some(device) = get_global_device() {
         device.poll(wgpu::Maintain::Poll);
         tracing::info!("✅ [GPU RESET] Ressources GPU libérées");
     }
@@ -138,7 +140,7 @@ impl StaticGpuPipeline {
             .await
             .map_err(|e| anyhow::anyhow!("Failed to create GPU manager: {}", e))?;
 
-        shaders::initialize_global_device(&gpu_manager.device, &gpu_manager.queue);
+        initialize_global_device(&gpu_manager.device, &gpu_manager.queue);
 
         let blend_processor = Arc::new(
             GpuBlendProcessor::new()
@@ -447,7 +449,7 @@ impl StaticGpuPipeline {
     }
 }
 
-fn decode_image_from_path(path: &Path) -> Result<image::DynamicImage> {
+fn decode_image_from_path(path: &Path) -> Result<DynamicImage> {
     let decode_start = Instant::now();
 
     let buffer =
@@ -457,9 +459,9 @@ fn decode_image_from_path(path: &Path) -> Result<image::DynamicImage> {
 
     let image = if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
         match ext.to_lowercase().as_str() {
-            "png" => load_from_memory_with_format(&buffer, image::ImageFormat::Png)?,
-            "webp" => load_from_memory_with_format(&buffer, image::ImageFormat::WebP)?,
-            "jpg" | "jpeg" => load_from_memory_with_format(&buffer, image::ImageFormat::Jpeg)?,
+            "png" => load_from_memory_with_format(&buffer, ImageFormat::Png)?,
+            "webp" => load_from_memory_with_format(&buffer, ImageFormat::WebP)?,
+            "jpg" | "jpeg" => load_from_memory_with_format(&buffer, ImageFormat::Jpeg)?,
             _ => load_from_memory(&buffer)?,
         }
     } else {
@@ -525,7 +527,7 @@ pub async fn process_static_single_gpu(
     let image_format_owned = image_format.to_string();
     let resize_config_owned = resize_config.cloned();
 
-    tokio::task::spawn_blocking(move || {
+    spawn_blocking(move || {
         process_static_single_gpu_blocking(
             &traits_owned,
             &active_layer_order_owned,
@@ -741,8 +743,6 @@ fn process_static_single_gpu_blocking(
                 let final_texture = if blend_properties.offset_x != 0
                     || blend_properties.offset_y != 0
                 {
-                    use crate::effects::core::transform::apply_offset;
-
                     tracing::debug!(
                         "🔄 [OFFSET] Applying offset X={}, Y={} to layer '{}'",
                         blend_properties.offset_x,

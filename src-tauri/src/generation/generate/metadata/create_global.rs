@@ -2,6 +2,7 @@ use std::{fs, path::Path};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use serde_json::{from_str, to_string_pretty, Value};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GlobalMetadata {
@@ -15,7 +16,7 @@ pub struct ItemMetadata {
     pub name: String,
     pub edition: u32,
     pub image: String,
-    pub external_files: serde_json::Value,
+    pub external_files: Value,
     pub description: String,
     pub date: String,
     pub dna: String,
@@ -55,7 +56,7 @@ pub fn create_global_metadata(
         }
 
         let content = fs::read_to_string(&file_path)?;
-        let item_metadata: ItemMetadata = serde_json::from_str(&content)?;
+        let item_metadata: ItemMetadata = from_str(&content)?;
 
         if item_metadata.attributes.is_empty() {
             eprintln!(
@@ -85,10 +86,7 @@ pub fn create_global_metadata(
     });
 
     let global_metadata_path = metadata_folder.join("_metadata.json");
-    fs::write(
-        global_metadata_path,
-        serde_json::to_string_pretty(&global_metadata)?,
-    )?;
+    fs::write(global_metadata_path, to_string_pretty(&global_metadata)?)?;
 
     Ok(())
 }

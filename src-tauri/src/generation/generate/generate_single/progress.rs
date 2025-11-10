@@ -1,9 +1,12 @@
 use anyhow::Result;
+use serde_json::{json, Value};
 use std::path::Path;
-use tauri::Emitter;
+use tauri::{Emitter, Window};
 
-use crate::generation::generation_main::{ImageInfo, NFTProgressInfo};
-use crate::types::NFTTrait;
+use crate::{
+    generation::generation_main::{ImageInfo, NFTProgressInfo},
+    types::NFTTrait,
+};
 
 pub fn send_generation_progress(
     traits: &[NFTTrait],
@@ -12,11 +15,11 @@ pub fn send_generation_progress(
     index: u32,
     total_to_generate: u32,
     export_folder: &Path,
-    window: &tauri::Window,
+    window: &Window,
 ) -> Result<()> {
-    let mut traits_obj = serde_json::json!({});
+    let mut traits_obj = json!({});
     for t in traits {
-        traits_obj[t.trait_type.clone()] = serde_json::Value::String(t.value.clone());
+        traits_obj[t.trait_type.clone()] = Value::String(t.value.clone());
     }
 
     let progress_info = NFTProgressInfo {
