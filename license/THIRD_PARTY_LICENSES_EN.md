@@ -46,7 +46,6 @@ This document lists the licenses of third-party libraries and dependencies used 
 - **rustfft** (6.1) - Fast Fourier Transform
 - **num-complex** (0.4) - Complex numbers
 - **either** (1.9) - Either type
-- **crossbeam** (0.8) - Cross-thread synchronization
 
 ### Apache 2.0 License
 - **tauri** (2.1) - Desktop app framework

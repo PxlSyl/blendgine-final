@@ -48,7 +48,6 @@ tempfile = "3.8.1"
 rustfft = "6.1"
 num-complex = "0.4"
 either = "1.9"
-crossbeam = "0.8"
 dashmap = "6.1.0"
 
 

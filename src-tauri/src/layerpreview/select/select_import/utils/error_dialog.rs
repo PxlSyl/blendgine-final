@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crossbeam::channel::bounded;
+use tokio::sync::oneshot;
 use tauri_plugin_dialog::DialogExt;
 
 pub async fn show_error_dialog(
@@ -7,7 +7,7 @@ pub async fn show_error_dialog(
     title: &str,
     message: &str,
 ) -> Result<(), String> {
-    let (tx, rx) = bounded(1);
+    let (tx, rx) = oneshot::channel();
 
     app_handle
         .dialog()
@@ -18,6 +18,6 @@ pub async fn show_error_dialog(
             let _ = tx.send(result);
         });
 
-    rx.recv().unwrap_or(false);
+    rx.await.unwrap_or(false);
     Ok(())
 }

@@ -16,7 +16,7 @@ use crate::{
     },
 };
 use anyhow::Result;
-use crossbeam::channel::bounded;
+use tokio::sync::oneshot;
 use serde::Serialize;
 use std::{fs::metadata, path::PathBuf};
 use tauri::Manager;
@@ -69,9 +69,10 @@ pub async fn select_and_load_folder_data(
     if let Some(hash) = previous_hash {
         if hash == current_hash {
             tracing::info!("Same folder selected, hash unchanged");
-            let (tx, rx) = bounded(1);
+            let (tx, rx) = oneshot::channel();
 
-            app_handle.dialog()
+            app_handle
+                .dialog()
                 .message("You have selected the same folder that is already loaded. Please select a different folder to continue.")
                 .title("Same Folder Selected")
                 .buttons(tauri_plugin_dialog::MessageDialogButtons::Ok)
@@ -79,7 +80,7 @@ pub async fn select_and_load_folder_data(
                     let _ = tx.send(result);
                 });
 
-            rx.recv().unwrap_or(false);
+            rx.await.unwrap_or(false);
             return Ok(None);
         }
     }

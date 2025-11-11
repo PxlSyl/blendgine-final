@@ -18,9 +18,10 @@ use tokio::{
 use tracing;
 use webp_animation::Decoder;
 
-use super::{file_watcher::start_animation_file_watcher, utils::update_global_max_frames};
 use crate::ffmpeg_wrapper::FFmpegWrapper;
 use crate::filesystem::temp_dir::get_secure_working_dir;
+use crate::layerpreview::animations::file_watcher::start_animation_file_watcher;
+use crate::layerpreview::animations::utils::update_global_max_frames;
 use crate::types::SpritesheetLayout;
 
 pub type Result<T, E = String> = std::result::Result<T, E>;

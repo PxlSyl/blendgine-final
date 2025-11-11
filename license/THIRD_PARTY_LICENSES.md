@@ -46,7 +46,6 @@ Ce document liste les licences des bibliothèques et dépendances tierces utilis
 - **rustfft** (6.1) - Transformée de Fourier rapide
 - **num-complex** (0.4) - Nombres complexes
 - **either** (1.9) - Type Either
-- **crossbeam** (0.8) - Synchronisation cross-thread
 
 ### Apache 2.0 License
 - **tauri** (2.1) - Framework d'application desktop

@@ -1,6 +1,6 @@
 use image::{DynamicImage, ImageBuffer, Rgba};
-use std::cell::RefCell;
-use std::error::Error;
+use std::{cell::RefCell, error::Error, iter::once};
+use tokio::sync::oneshot::channel;
 use wgpu::{
     BufferDescriptor, BufferUsages, Device, Extent3d, Queue, Texture, TextureDescriptor,
     TextureFormat, TextureUsages,
@@ -182,16 +182,16 @@ impl GpuTexture {
             size,
         );
 
-        queue.submit(std::iter::once(encoder.finish()));
+        queue.submit(once(encoder.finish()));
 
         let buffer_slice = buffer.slice(..);
-        let (tx, rx) = crossbeam::channel::bounded(1);
+        let (tx, rx) = channel();
         buffer_slice.map_async(wgpu::MapMode::Read, move |result| {
             let _ = tx.send(result);
         });
         device.poll(wgpu::Maintain::Wait);
         let _ = rx
-            .recv()
+            .blocking_recv()
             .map_err(|e| format!("Failed to receive buffer data: {}", e))?;
 
         let data = buffer_slice.get_mapped_range();

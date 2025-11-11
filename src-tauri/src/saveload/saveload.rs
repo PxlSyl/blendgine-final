@@ -1,4 +1,3 @@
-use crossbeam::channel::bounded;
 use std::{
     fs,
     io::{Read, Write},
@@ -12,6 +11,7 @@ use tauri_plugin_dialog::{DialogExt, FilePath, MessageDialogButtons};
 use zip::{read::ZipArchive, write::FileOptions, ZipWriter};
 
 use tauri::AppHandle;
+use tokio::sync::oneshot;
 
 use crate::filesystem::temp_dir::get_secure_working_dir;
 
@@ -27,7 +27,7 @@ pub async fn save_project_config(
         .join("nft-project-config.bdg");
 
     // Ask user the save mode
-    let (tx, rx) = crossbeam::channel::bounded(1);
+    let (tx, rx) = oneshot::channel();
 
     app.dialog()
         .message("Do you want to save the project with assets (recommended for portability)?")
@@ -38,7 +38,7 @@ pub async fn save_project_config(
         });
 
     // Wait until user answers
-    let full_save = rx.recv().unwrap_or(false);
+    let full_save = rx.await.unwrap_or(false);
 
     let dialog = app
         .dialog()
@@ -47,7 +47,7 @@ pub async fn save_project_config(
         .set_file_name(default_path.to_str().unwrap_or_default())
         .set_title("Save Project Configuration");
 
-    let (save_tx, save_rx) = bounded(1);
+    let (save_tx, save_rx) = oneshot::channel();
 
     dialog.save_file(move |file_path: Option<FilePath>| {
         if let Some(path) = file_path {
@@ -135,10 +135,12 @@ pub async fn save_project_config(
         }
     });
 
-    save_rx.recv().unwrap_or(Ok(serde_json::json!({
-        "success": false,
-        "message": "Save operation canceled by user"
-    })))
+    save_rx
+        .await
+        .unwrap_or(Ok(serde_json::json!({
+            "success": false,
+            "message": "Save operation canceled by user"
+        })))
 }
 
 #[tauri::command]

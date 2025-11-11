@@ -1,7 +1,8 @@
-use crate::effects::core::gpu::{common::GpuTexture, shaders, GpuImage};
+use crate::effects::core::gpu::{common::GpuTexture, shaders::load_shader, GpuImage};
+use bytemuck::{cast_slice, Pod, Zeroable};
 use image::DynamicImage;
 use serde::{Deserialize, Serialize};
-use std::error::Error;
+use std::{error::Error, iter::once};
 use wgpu::{Device, Queue};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -56,7 +57,7 @@ impl Default for ResizeConfig {
 }
 
 #[repr(C, align(16))]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
 struct Uniforms {
     src_width: f32,
     src_height: f32,
@@ -172,7 +173,7 @@ impl ResizeGpu {
     }
 
     pub fn new(device: &Device, _queue: &Queue) -> Result<Self, Box<dyn Error>> {
-        let shader = shaders::load_shader(device, "resize");
+        let shader = load_shader(device, "resize");
 
         let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("Resize Bind Group Layout"),
@@ -225,7 +226,7 @@ impl ResizeGpu {
 
         let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("Resize Uniform Buffer"),
-            size: std::mem::size_of::<Uniforms>() as u64,
+            size: size_of::<Uniforms>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
@@ -258,7 +259,7 @@ impl ResizeGpu {
             _padding: 0,
         };
 
-        queue.write_buffer(&self.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+        queue.write_buffer(&self.uniform_buffer, 0, cast_slice(&[uniforms]));
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Resize Bind Group"),
@@ -305,7 +306,7 @@ impl ResizeGpu {
         compute_pass.dispatch_workgroups(dispatch_x, dispatch_y, 1);
         drop(compute_pass);
 
-        queue.submit(std::iter::once(encoder.finish()));
+        queue.submit(once(encoder.finish()));
         device.poll(wgpu::Maintain::Wait);
 
         Ok(())

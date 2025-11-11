@@ -1,5 +1,5 @@
 use super::{common::GpuTexture, shaders, GpuEffectManager};
-use crate::types::BlendMode;
+use crate::{effects::core::gpu::shaders::get_or_create_bind_group_layout, types::BlendMode};
 use bytemuck::cast_slice;
 use dashmap::DashMap;
 use image::{DynamicImage, GenericImageView};
@@ -9,9 +9,8 @@ use rayon::prelude::*;
 use std::{
     collections::{HashMap, HashSet},
     error::Error,
-    iter,
+    iter::once,
     sync::Arc,
-    time::Instant,
 };
 use wgpu::{BindGroupLayout, ComputePipeline, Device, Queue};
 static PIPELINE_CACHE: Lazy<DashMap<BlendMode, Arc<ComputePipeline>>> =
@@ -80,11 +79,6 @@ fn cleanup_temp_texture_pool() {
         if let Some((_, textures)) = TEMP_TEXTURE_POOL.remove(&key) {
             for texture in textures {
                 texture.texture().destroy();
-                tracing::debug!(
-                    "🗑️ [GPU POOL] Texture temporaire {}x{} détruite",
-                    texture.texture().size().width,
-                    texture.texture().size().height
-                );
             }
         }
     }
@@ -125,13 +119,9 @@ impl GpuBlendContext {
                 let arc_ctx = Arc::new(ctx);
                 let mut global_ctx = GLOBAL_GPU_BLEND_CONTEXT.lock();
                 *global_ctx = Some(arc_ctx.clone());
-                tracing::info!("✅ [GPU BLEND] Global context initialized");
                 Some(arc_ctx)
             }
-            Err(e) => {
-                tracing::error!("Failed to create GPU blend context: {}", e);
-                None
-            }
+            Err(_e) => None,
         }
     }
 
@@ -146,7 +136,6 @@ impl GpuBlendContext {
         if let Some(ctx) = global_ctx.take() {
             drop(ctx);
         }
-        tracing::info!("✅ [GPU BLEND] Global context cleared");
     }
 }
 
@@ -162,7 +151,7 @@ impl Drop for GpuBlendProcessor {
 
 impl GpuBlendProcessor {
     pub async fn new() -> Result<Self, BlendGpuError> {
-        let bind_group_layout = shaders::get_or_create_bind_group_layout("blend_modes");
+        let bind_group_layout = get_or_create_bind_group_layout("blend_modes");
         Ok(Self { bind_group_layout })
     }
 
@@ -246,28 +235,15 @@ impl GpuBlendProcessor {
         blend_mode: BlendMode,
     ) -> Result<Arc<ComputePipeline>, BlendGpuError> {
         if let Some(pipeline) = PIPELINE_CACHE.get(&blend_mode) {
-            println!(
-                "🚀 [SHADER CACHE] HIT global: Pipeline {:?} récupéré du cache global",
-                blend_mode
-            );
             return Ok(Arc::clone(pipeline.value()));
         }
 
         let shader_name = Self::get_shader_name(blend_mode);
-        println!(
-            "🔨 [SHADER CACHE] MISS global: Création pipeline {:?} (shader: {})",
-            blend_mode, shader_name
-        );
 
         let pipeline =
             shaders::get_or_create_compute_pipeline(&shader_name, &self.bind_group_layout);
 
         PIPELINE_CACHE.insert(blend_mode, Arc::clone(&pipeline));
-
-        println!(
-            "✅ [SHADER CACHE] Pipeline {:?} ajouté au cache global",
-            blend_mode
-        );
 
         Ok(pipeline)
     }
@@ -302,7 +278,7 @@ impl GpuBlendProcessor {
             mapped_at_creation: false,
         });
 
-        queue.write_buffer(&opacity_buffer, 0, bytemuck::cast_slice(&opacity_data));
+        queue.write_buffer(&opacity_buffer, 0, cast_slice(&opacity_data));
 
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Blend Bind Group"),
@@ -342,8 +318,7 @@ impl GpuBlendProcessor {
         compute_pass.dispatch_workgroups(workgroup_count_x, workgroup_count_y, 1);
         drop(compute_pass);
 
-        queue.submit(iter::once(encoder.finish()));
-        println!("✅ [BLEND] Blend operation completed: {:?}", blend_mode);
+        queue.submit(once(encoder.finish()));
 
         Ok(())
     }
@@ -355,12 +330,6 @@ impl GpuBlendProcessor {
         layers: &[(&GpuTexture, BlendMode, f32)],
         queue: &Queue,
     ) -> Result<(), String> {
-        let start_time = Instant::now();
-        println!(
-            "🚀 [BLEND MULTI] Starting multiple blend operation ({} layers)",
-            layers.len()
-        );
-
         if layers.is_empty() {
             return Ok(());
         }
@@ -380,7 +349,6 @@ impl GpuBlendProcessor {
             wgpu::TextureFormat::Rgba8Unorm,
         );
 
-        let pipeline_start = Instant::now();
         let workgroup_size = 8u32;
 
         let unique_blend_modes: HashSet<_> = layers.iter().map(|(_, mode, _)| *mode).collect();
@@ -406,7 +374,7 @@ impl GpuBlendProcessor {
                 let opacity_data = [*opacity as f32];
                 let opacity_buffer = device.create_buffer(&wgpu::BufferDescriptor {
                     label: Some(&format!("Blend Opacity Uniform Layer {}", i)),
-                    size: 16, // 4 bytes for f32 + 12 bytes padding for uniform buffer alignment
+                    size: 16,
                     usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
                     mapped_at_creation: false,
                 });
@@ -422,18 +390,6 @@ impl GpuBlendProcessor {
                 )
             })
             .collect();
-
-        let pipeline_time = pipeline_start.elapsed();
-        println!(
-            "⏱️ [TIMING] Préparation pipelines optimisée: {:?}",
-            pipeline_time
-        );
-
-        let view_start = Instant::now();
-        println!(
-            "🔧 [VIEWS] Création parallèle de {} vues de texture avec cache thread-local...",
-            ops.len()
-        );
 
         let all_views: Vec<_> = {
             let mut views = Vec::with_capacity(ops.len() + 3);
@@ -458,19 +414,11 @@ impl GpuBlendProcessor {
             views
         };
 
-        let view_creation_time = view_start.elapsed();
-        println!(
-            "⚡ [VIEWS] {} vues créées en parallèle avec cache thread-local en {:?}",
-            all_views.len(),
-            view_creation_time
-        );
-
         let temp_a_view = &all_views[0];
         let temp_b_view = &all_views[1];
         let base_view = &all_views[2];
         let all_layer_views = &all_views[3..];
 
-        let copy_start = Instant::now();
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor::default());
         encoder.copy_texture_to_texture(
             wgpu::ImageCopyTexture {
@@ -487,16 +435,11 @@ impl GpuBlendProcessor {
             },
             texture_size,
         );
-        let copy_time = copy_start.elapsed();
-        println!("⏱️ [TIMING] Encoder + copie texture: {:?}", copy_time);
-
-        let execution_start = Instant::now();
 
         let first_layer = ops.get(0).expect("layers non vides");
-        let (pipeline, _layer_tex, dispatch, _is_last, blend_mode, opacity_buffer) = first_layer;
+        let (pipeline, _layer_tex, dispatch, _is_last, _blend_mode, opacity_buffer) = first_layer;
         let layer_view = &all_layer_views[0];
 
-        let first_bind_start = Instant::now();
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Blend BG first"),
             layout: &self.bind_group_layout,
@@ -519,9 +462,7 @@ impl GpuBlendProcessor {
                 },
             ],
         });
-        let first_bind_time = first_bind_start.elapsed();
 
-        let first_compute_start = Instant::now();
         {
             let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Blend First Pass"),
@@ -530,15 +471,6 @@ impl GpuBlendProcessor {
             pass.set_bind_group(0, &bind_group, &[]);
             pass.dispatch_workgroups(dispatch.0, dispatch.1, 1);
         }
-        let first_compute_time = first_compute_start.elapsed();
-
-        println!(
-            "⏱️ [BLEND] Layer 1 ({:?}): BindGroup={:?}, Compute={:?}, Total={:?}",
-            blend_mode,
-            first_bind_time,
-            first_compute_time,
-            first_bind_time + first_compute_time
-        );
 
         let mut use_a_as_src = true;
         let intermediate_ops: Vec<_> = ops
@@ -548,7 +480,7 @@ impl GpuBlendProcessor {
             .collect();
 
         for (i, op) in intermediate_ops.iter().enumerate() {
-            let (pipeline, _layer_tex, dispatch, _is_last, blend_mode, opacity_buffer) = op;
+            let (pipeline, _layer_tex, dispatch, _is_last, _blend_mode, opacity_buffer) = op;
 
             let (src_view, dst_view) = if use_a_as_src {
                 (&temp_a_view, &temp_b_view)
@@ -558,7 +490,6 @@ impl GpuBlendProcessor {
 
             let layer_view = &all_layer_views[i + 1];
 
-            let bind_group_start = Instant::now();
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Blend BG mid"),
                 layout: &self.bind_group_layout,
@@ -581,9 +512,7 @@ impl GpuBlendProcessor {
                     },
                 ],
             });
-            let bind_group_time = bind_group_start.elapsed();
 
-            let compute_start = Instant::now();
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("Blend Mid Pass"),
@@ -592,22 +521,12 @@ impl GpuBlendProcessor {
                 pass.set_bind_group(0, &bind_group, &[]);
                 pass.dispatch_workgroups(dispatch.0, dispatch.1, 1);
             }
-            let compute_time = compute_start.elapsed();
-
-            println!(
-                "⏱️ [BLEND] Layer {} ({:?}): BindGroup={:?}, Compute={:?}, Total={:?}",
-                i + 2,
-                blend_mode,
-                bind_group_time,
-                compute_time,
-                bind_group_time + compute_time
-            );
 
             use_a_as_src = !use_a_as_src;
         }
 
         if let Some(last_op) = ops.last() {
-            let (pipeline, _layer_tex, dispatch, _is_last, blend_mode, opacity_buffer) = last_op;
+            let (pipeline, _layer_tex, dispatch, _is_last, _blend_mode, opacity_buffer) = last_op;
 
             let src_view = if use_a_as_src {
                 &temp_a_view
@@ -617,7 +536,6 @@ impl GpuBlendProcessor {
 
             let layer_view = all_layer_views.last().expect("Vues non vides");
 
-            let final_bind_start = Instant::now();
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: Some("Blend BG final"),
                 layout: &self.bind_group_layout,
@@ -640,9 +558,7 @@ impl GpuBlendProcessor {
                     },
                 ],
             });
-            let final_bind_time = final_bind_start.elapsed();
 
-            let final_compute_start = Instant::now();
             {
                 let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                     label: Some("Blend Final Pass"),
@@ -651,52 +567,13 @@ impl GpuBlendProcessor {
                 pass.set_bind_group(0, &bind_group, &[]);
                 pass.dispatch_workgroups(dispatch.0, dispatch.1, 1);
             }
-            let final_compute_time = final_compute_start.elapsed();
-
-            println!(
-                "⏱️ [BLEND] Layer {} ({:?}) [FINAL]: BindGroup={:?}, Compute={:?}, Total={:?}",
-                layers.len(),
-                blend_mode,
-                final_bind_time,
-                final_compute_time,
-                final_bind_time + final_compute_time
-            );
         }
 
-        let execution_time = execution_start.elapsed();
-        println!("⏱️ [TIMING] Exécution GPU optimisée: {:?}", execution_time);
-
-        let submit_start = Instant::now();
         let cmd = encoder.finish();
-        let _index = queue.submit(std::iter::once(cmd));
-        let submit_time = submit_start.elapsed();
-        println!("⏱️ [TIMING] Submit GPU: {:?}", submit_time);
-
-        let poll_start = Instant::now();
+        let _index = queue.submit(once(cmd));
         device.poll(wgpu::Maintain::Wait);
-        let poll_time = poll_start.elapsed();
-        println!("⏱️ [TIMING] Poll GPU (drain): {:?}", poll_time);
-
-        let destroy_start = Instant::now();
         temp_a.destroy();
         temp_b.destroy();
-        let destroy_time = destroy_start.elapsed();
-        println!(
-            "⏱️ [TIMING] Destruction textures temporaires: {:?}",
-            destroy_time
-        );
-
-        let total = start_time.elapsed();
-        println!(
-            "✅ [BLEND MULTI] Completed in {:?} ({} layers) - ULTRA OPTIMIZED: Views={:?}, Pipelines={:?}, GPU={:?}, Poll={:?}, Destroy={:?}",
-            total,
-            layers.len(),
-            view_creation_time,
-            pipeline_time,
-            execution_time,
-            poll_time,
-            destroy_time
-        );
         Ok(())
     }
 }
