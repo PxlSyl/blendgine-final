@@ -159,7 +159,7 @@ pub fn create_rarity_files(
     let _ = sheet.write_string(0, 3, "Effective Rarity (%)");
 
     for (row, record) in data.iter().enumerate() {
-        let row = (row + 1) as u32; // Start from row 1 (after header)
+        let row = (row + 1) as u32;
         let _ = sheet.write_string(row, 0, &record.layer);
         let _ = sheet.write_string(row, 1, &record.trait_name);
         let _ = sheet.write_string(row, 2, &record.defined_rarity);

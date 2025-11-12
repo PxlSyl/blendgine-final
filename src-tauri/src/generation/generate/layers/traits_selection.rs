@@ -364,7 +364,7 @@ pub fn select_random_with_rarity(
         return None;
     }
 
-    let cache_key = format!("{}_{}", layer, files.len()); // Clé unique par layer + nombre de fichiers
+    let cache_key = format!("{}_{}", layer, files.len());
     let file_lookup = global_caches
         .file_lookup_cache
         .entry(cache_key)
